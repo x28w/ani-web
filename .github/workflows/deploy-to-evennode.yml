@@ -12,21 +12,19 @@ jobs:
     steps:
       - name: Checkout GitHub repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up SSH key
         run: |
           mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
+          printf '%s\n' "${{ secrets.SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan git.evennode.com >> ~/.ssh/known_hosts
-
-      - name: Test SSH connection
-        run: |
-          ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes -v git@git.evennode.com || true
 
       - name: Push to EvenNode
         run: |
           git config --global user.email "${{ secrets.GIT_EMAIL }}"
           git config --global user.name "${{ secrets.GIT_NAME }}"
           git remote add evennode "${{ secrets.EVENNODE_REPO_URL }}"
-          GIT_SSH_COMMAND="ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes" git push evennode main:master --force
+          GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes" git push evennode main:master --force
