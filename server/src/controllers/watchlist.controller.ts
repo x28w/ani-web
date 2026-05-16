@@ -62,6 +62,10 @@ export class WatchlistController {
 
   constructor(private provider: AllAnimeProvider) {}
 
+  private getProgressUserId(req: Request): string {
+    return req.siteUser?.username || 'local'
+  }
+
   private normalizeFilterValue(value: unknown): string | undefined {
     if (typeof value !== 'string') return undefined
     const trimmed = value.trim()
@@ -188,7 +192,8 @@ export class WatchlistController {
     req: Request,
     limit?: number
   ): Promise<CombinedContinueWatchingShow[]> {
-    const rows = await WatchedEpisodesRepository.getContinueWatching(req.db, limit)
+    const userId = this.getProgressUserId(req)
+    const rows = await WatchedEpisodesRepository.getContinueWatching(req.db, userId, limit)
 
     const showsNeedingEpisodes = rows.filter((show) => {
       const watchedCount = show.watchedCount || 0
@@ -268,11 +273,12 @@ export class WatchlistController {
   }
 
   private async getUpNextShowsData(req: Request): Promise<CombinedContinueWatchingShow[]> {
-    const watchingShows = await WatchedEpisodesRepository.getUpNextShows(req.db)
+    const userId = this.getProgressUserId(req)
+    const watchingShows = await WatchedEpisodesRepository.getUpNextShows(req.db, userId)
     if (watchingShows.length === 0) return []
 
     const showIds = watchingShows.map((s) => s.id)
-    const allWatchedEps = await WatchedEpisodesRepository.getEpisodesForShows(req.db, showIds)
+    const allWatchedEps = await WatchedEpisodesRepository.getEpisodesForShows(req.db, userId, showIds)
 
     const watchedByShow = new Map<string, WatchedEpisode[]>()
     for (const ep of allWatchedEps) {
@@ -416,6 +422,7 @@ export class WatchlistController {
         })
 
         WatchedEpisodesRepository.upsert(tx, {
+          userId: this.getProgressUserId(req),
           showId,
           episodeNumber,
           currentTime,
@@ -435,8 +442,7 @@ export class WatchlistController {
     const { showId } = req.body
     try {
       await performWriteTransaction(req.db, (tx) => {
-        WatchedEpisodesRepository.deleteByShow(tx, showId)
-        NotificationsRepository.deleteByShow(tx, showId)
+        WatchedEpisodesRepository.deleteByShow(tx, this.getProgressUserId(req), showId)
       })
       res.json({ success: true })
     } catch {
@@ -532,6 +538,7 @@ export class WatchlistController {
     try {
       const progress = await WatchedEpisodesRepository.getByShowAndEpisode(
         req.db,
+        this.getProgressUserId(req),
         req.params.showId as string,
         req.params.episodeNumber as string
       )
@@ -545,6 +552,7 @@ export class WatchlistController {
     try {
       const episodes = await WatchedEpisodesRepository.getWatchedEpisodeNumbers(
         req.db,
+        this.getProgressUserId(req),
         req.params.showId as string
       )
       res.json(episodes)
@@ -596,7 +604,7 @@ export class WatchlistController {
     try {
       await performWriteTransaction(req.db, (tx) => {
         WatchlistRepository.delete(tx, id)
-        WatchedEpisodesRepository.deleteByShow(tx, id)
+        WatchedEpisodesRepository.deleteByShow(tx, this.getProgressUserId(req), id)
         NotificationsRepository.deleteByShow(tx, id)
       })
       res.json({ success: true })
@@ -620,6 +628,7 @@ export class WatchlistController {
   getNotifications = async (req: Request, res: Response) => {
     try {
       const db = req.db
+      const userId = this.getProgressUserId(req)
       const watchingShows = await WatchlistRepository.getWatchingShows(db)
 
       const notifications: EpisodeNotification[] = []
@@ -633,7 +642,7 @@ export class WatchlistController {
               const [epDetails, watchedEps, dismissedEps, showStatus, discoveredEps] =
                 await Promise.all([
                   this.provider.getEpisodes(show.id, 'sub'),
-                  WatchedEpisodesRepository.getWatchedEpisodeNumbers(db, show.id),
+                  WatchedEpisodesRepository.getWatchedEpisodeNumbers(db, userId, show.id),
                   NotificationsRepository.getDismissedByShow(db, show.id),
                   ShowsMetaRepository.getStatus(db, show.id),
                   NotificationsRepository.getDiscoveredByShow(db, show.id),
