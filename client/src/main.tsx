@@ -6,6 +6,7 @@ import './styles/base.css'
 import { SidebarProvider } from './contexts/SidebarProvider'
 import { TitlePreferenceProvider } from './contexts/TitlePreferenceContext'
 import { LowEndModeProvider } from './contexts/LowEndModeContext'
+import { AuthProvider } from './contexts/AuthContext'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 const queryClient = new QueryClient({
@@ -25,7 +26,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <SidebarProvider>
           <TitlePreferenceProvider>
             <LowEndModeProvider>
-              <App />
+              <AuthProvider>
+                <App />
+              </AuthProvider>
             </LowEndModeProvider>
           </TitlePreferenceProvider>
         </SidebarProvider>
