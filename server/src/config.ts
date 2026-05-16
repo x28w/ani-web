@@ -7,6 +7,10 @@ export const SERVER_ROOT = path.resolve(__dirname, '..')
 const PACKAGE_ROOT = path.resolve(SERVER_ROOT, '..')
 
 function resolveDataRoot() {
+  if (process.env.DATA_ROOT) {
+    return process.env.DATA_ROOT
+  }
+
   if (process.platform === 'win32' && process.env.APPDATA) {
     return path.join(process.env.APPDATA, 'ani-web')
   }
@@ -63,10 +67,12 @@ migrateLegacyData(SERVER_ROOT, DATA_ROOT)
 dotenv.config({ path: ENV_PATH })
 
 const IS_DEV = process.argv.includes('--dev')
-const PORT = 3000
+const PORT = Number(process.env.PORT) || 3000
+const PUBLIC_URL = process.env.PUBLIC_URL || `http://localhost:${PORT}`
+
 const GOOGLE_REDIRECT_URI = IS_DEV
   ? 'http://localhost:5173/api/auth/google/callback'
-  : `http://localhost:${PORT}/api/auth/google/callback`
+  : `${PUBLIC_URL}/api/auth/google/callback`
 
 export const CONFIG = {
   ROOT: DATA_ROOT,
@@ -89,8 +95,9 @@ export const CONFIG = {
   ],
   IS_DEV,
   PORT,
+  PUBLIC_URL,
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
-  GOOGLE_REDIRECT_URI: GOOGLE_REDIRECT_URI,
+  GOOGLE_REDIRECT_URI,
   RCLONE_REMOTE: process.env.RCLONE_REMOTE,
 }
