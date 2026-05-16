@@ -31,10 +31,11 @@ const Settings: React.FC = () => {
   const profileInputRef = useRef<HTMLInputElement>(null)
   const { lowEndMode, setLowEndMode } = useLowEndMode()
   const isAdmin = user?.role === 'admin'
+  const isGuest = user?.role === 'guest'
 
   const isTabAllowed = React.useCallback(
-    (tab: SettingsTab) => tab === 'general' || tab === 'watchlist' || isAdmin,
-    [isAdmin]
+    (tab: SettingsTab) => tab === 'general' || (!isGuest && tab === 'watchlist') || isAdmin,
+    [isAdmin, isGuest]
   )
 
   React.useEffect(() => {
@@ -151,6 +152,25 @@ const Settings: React.FC = () => {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'general':
+        if (isGuest) {
+          return (
+            <div className={styles.tabContent}>
+              <div className={styles.sectionCard}>
+                <h3>Website Language</h3>
+                <p>Choose how anime titles are shown while browsing as a guest.</p>
+                <div className={styles.settingItem}>
+                  <TitlePreferenceToggle title="Website Language" />
+                </div>
+                <div className={styles.guestActions}>
+                  <Button variant="secondary" onClick={handleLogout}>
+                    <FaSignOutAlt /> Sign out
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
         return (
           <div className={styles.tabContent}>
             <div className={styles.sectionCard}>
@@ -290,12 +310,14 @@ const Settings: React.FC = () => {
               <FaCloud /> <span>Synchronization</span>
             </button>
           )}
-          <button
-            className={`${styles.sidebarItem} ${activeTab === 'watchlist' ? styles.active : ''}`}
-            onClick={() => selectTab('watchlist')}
-          >
-            <FaList /> <span>Watchlist</span>
-          </button>
+          {!isGuest && (
+            <button
+              className={`${styles.sidebarItem} ${activeTab === 'watchlist' ? styles.active : ''}`}
+              onClick={() => selectTab('watchlist')}
+            >
+              <FaList /> <span>Watchlist</span>
+            </button>
+          )}
           {isAdmin && (
             <button
               className={`${styles.sidebarItem} ${activeTab === 'database' ? styles.active : ''}`}

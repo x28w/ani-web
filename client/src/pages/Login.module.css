@@ -109,6 +109,29 @@
   opacity: 0.6;
 }
 
+.guestButton {
+  min-height: 44px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.guestButton:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--text-primary);
+  background: rgba(139, 92, 246, 0.12);
+}
+
+.guestButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 @media (max-width: 480px) {
   .loginPanel {
     padding: var(--space-6);

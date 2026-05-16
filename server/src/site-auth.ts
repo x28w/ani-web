@@ -6,7 +6,7 @@ import multer from 'multer'
 import { CONFIG } from './config'
 import logger from './logger'
 
-type SiteRole = 'admin' | 'user'
+type SiteRole = 'admin' | 'user' | 'guest'
 
 interface SiteUserRecord {
   username: string
@@ -25,6 +25,7 @@ export interface SiteUser {
 interface SessionPayload {
   username: string
   exp: number
+  guest?: boolean
 }
 
 interface ProfilePictureMeta {
@@ -113,6 +114,16 @@ function createSessionToken(username: string): string {
   return `${encodedPayload}.${signPayload(encodedPayload)}`
 }
 
+function createGuestSessionToken(): string {
+  const payload: SessionPayload = {
+    username: `guest:${crypto.randomBytes(12).toString('base64url')}`,
+    exp: Date.now() + SESSION_MAX_AGE_SECONDS * 1000,
+    guest: true,
+  }
+  const encodedPayload = encodeJson(payload)
+  return `${encodedPayload}.${signPayload(encodedPayload)}`
+}
+
 function safeCompare(left: string, right: string): boolean {
   const leftBuffer = Buffer.from(left)
   const rightBuffer = Buffer.from(right)
@@ -180,6 +191,14 @@ function getLocalUser(): SiteUser {
   }
 }
 
+function toGuestUser(username: string): SiteUser {
+  return {
+    username,
+    displayName: 'Guest',
+    role: 'guest',
+  }
+}
+
 function getUserFromSession(req: Request): SiteUser | null {
   const users = getConfiguredUsers()
   const token = parseCookies(req.headers.cookie)[COOKIE_NAME]
@@ -194,6 +213,10 @@ function getUserFromSession(req: Request): SiteUser | null {
     const payload = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8'))
     if (typeof payload.username !== 'string' || typeof payload.exp !== 'number') return null
     if (payload.exp < Date.now()) return null
+
+    if (payload.guest === true && payload.username.startsWith('guest:')) {
+      return toGuestUser(payload.username)
+    }
 
     const user = users.find((entry) => entry.username === payload.username)
     return user ? toPublicUser(user) : null
@@ -215,6 +238,25 @@ function setSessionCookie(res: Response, username: string) {
 
   if (secure) cookieParts.push('Secure')
   res.setHeader('Set-Cookie', cookieParts.join('; '))
+}
+
+function setGuestSessionCookie(res: Response) {
+  const secure = !CONFIG.IS_DEV && process.env.RENDER === 'true'
+  const token = createGuestSessionToken()
+  const cookieParts = [
+    `${COOKIE_NAME}=${encodeURIComponent(token)}`,
+    'HttpOnly',
+    'Path=/',
+    'SameSite=Lax',
+    `Max-Age=${SESSION_MAX_AGE_SECONDS}`,
+  ]
+
+  if (secure) cookieParts.push('Secure')
+  res.setHeader('Set-Cookie', cookieParts.join('; '))
+
+  const [encodedPayload] = token.split('.')
+  const payload = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8'))
+  return toGuestUser(payload.username)
 }
 
 function clearSessionCookie(res: Response) {
@@ -291,6 +333,9 @@ function handleUploadError(error: unknown, res: Response): boolean {
 
 async function saveProfilePicture(req: Request, res: Response) {
   if (!req.siteUser) return res.status(401).json({ error: 'Login required' })
+  if (req.siteUser.role === 'guest') {
+    return res.status(403).json({ error: 'Guest profiles cannot upload pictures.' })
+  }
   if (!req.file) return res.status(400).json({ error: 'No profile picture uploaded.' })
 
   const ext = allowedImageTypes[req.file.mimetype]
@@ -357,6 +402,11 @@ export function createSiteAuthRouter(): Router {
 
     setSessionCookie(res, user.username)
     res.json({ user: toPublicUser(user) })
+  })
+
+  router.post('/guest', (_req, res) => {
+    const user = setGuestSessionCookie(res)
+    res.json({ user })
   })
 
   router.post('/logout', (_req, res) => {

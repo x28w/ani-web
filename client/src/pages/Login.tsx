@@ -9,7 +9,7 @@ interface LoginLocationState {
 }
 
 const Login: React.FC = () => {
-  const { authenticated, enabled, login } = useAuth()
+  const { authenticated, enabled, login, browseAsGuest } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const locationState = location.state as LoginLocationState | null
@@ -37,6 +37,20 @@ const Login: React.FC = () => {
       navigate(redirectTo, { replace: true })
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : 'Unable to sign in.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleGuestBrowse = async () => {
+    setError('')
+    setIsSubmitting(true)
+
+    try {
+      await browseAsGuest()
+      navigate('/', { replace: true })
+    } catch (guestError) {
+      setError(guestError instanceof Error ? guestError.message : 'Unable to browse as guest.')
     } finally {
       setIsSubmitting(false)
     }
@@ -80,6 +94,15 @@ const Login: React.FC = () => {
 
         <button className={styles.submitButton} disabled={isSubmitting || !enabled}>
           {isSubmitting ? 'Signing in...' : 'Sign in'}
+        </button>
+
+        <button
+          type="button"
+          className={styles.guestButton}
+          onClick={handleGuestBrowse}
+          disabled={isSubmitting}
+        >
+          Browse as guest
         </button>
       </form>
     </div>

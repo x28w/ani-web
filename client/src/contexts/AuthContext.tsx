@@ -3,7 +3,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 export interface SiteUser {
   username: string
   displayName: string
-  role: 'admin' | 'user'
+  role: 'admin' | 'user' | 'guest'
   profilePictureUrl?: string
 }
 
@@ -14,6 +14,7 @@ interface AuthContextValue {
   maxProfilePictureBytes: number
   user: SiteUser | null
   login: (username: string, password: string) => Promise<void>
+  browseAsGuest: () => Promise<void>
   logout: () => Promise<void>
   refresh: () => Promise<void>
   uploadProfilePicture: (file: File) => Promise<void>
@@ -86,6 +87,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [refresh]
   )
 
+  const browseAsGuest = useCallback(async () => {
+    const response = await fetch('/api/site-auth/guest', { method: 'POST' })
+
+    if (!response.ok) {
+      throw new Error(await parseError(response))
+    }
+
+    await refresh()
+  }, [refresh])
+
   const logout = useCallback(async () => {
     await fetch('/api/site-auth/logout', { method: 'POST' })
     setAuthenticated(false)
@@ -119,6 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       maxProfilePictureBytes,
       user,
       login,
+      browseAsGuest,
       logout,
       refresh,
       uploadProfilePicture,
@@ -130,6 +142,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       maxProfilePictureBytes,
       user,
       login,
+      browseAsGuest,
       logout,
       refresh,
       uploadProfilePicture,
