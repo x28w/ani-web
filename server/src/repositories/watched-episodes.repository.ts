@@ -83,25 +83,25 @@ export const WatchedEpisodesRepository = {
     const limitClause = typeof limit === 'number' ? `LIMIT ${limit}` : ''
     const query = `
       SELECT 
-        w.id as _id,
-        w.id as id,
-        w.name as name,
-        w.thumbnail as thumbnail,
-        w.nativeName as nativeName,
-        w.englishName as englishName,
-        w.type as type,
+        COALESCE(w.id, sm.id, we.showId) as _id,
+        COALESCE(w.id, sm.id, we.showId) as id,
+        COALESCE(w.name, sm.name, we.showId) as name,
+        COALESCE(w.thumbnail, sm.thumbnail, '') as thumbnail,
+        COALESCE(w.nativeName, sm.nativeName) as nativeName,
+        COALESCE(w.englishName, sm.englishName) as englishName,
+        COALESCE(w.type, sm.type) as type,
         sm.episodeCount,
         sm.type as smType,
-        (SELECT COUNT(DISTINCT episodeNumber) FROM watched_episodes WHERE userId = ? AND showId = w.id) as watchedCount,
+        (SELECT COUNT(DISTINCT episodeNumber) FROM watched_episodes WHERE userId = ? AND showId = we.showId) as watchedCount,
         we.episodeNumber, we.currentTime, we.duration, we.watchedAt
       FROM (
         SELECT *, ROW_NUMBER() OVER(PARTITION BY showId ORDER BY watchedAt DESC) as rn
         FROM watched_episodes
         WHERE userId = ?
       ) we
-      JOIN watchlist w ON we.showId = w.id
       LEFT JOIN shows_meta sm ON we.showId = sm.id
-      WHERE we.rn = 1 AND w.status = 'Watching'
+      LEFT JOIN watchlist w ON we.showId = w.id
+      WHERE we.rn = 1 AND COALESCE(w.status, 'Watching') = 'Watching'
       ORDER BY we.watchedAt DESC
       ${limitClause}
     `
