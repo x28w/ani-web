@@ -1,60 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { FaBars, FaCloud, FaGithub, FaSearch } from 'react-icons/fa'
+import { FaBars, FaSearch, FaUserCircle } from 'react-icons/fa'
 import NotificationBell from './NotificationBell'
 import Logo from '../common/Logo'
 import { useSidebar } from '../../hooks/useSidebar'
+import { useAuth } from '../../contexts/AuthContext'
 import styles from './Header.module.css'
-
-interface UserProfile {
-  name: string
-  picture?: string
-  email?: string
-  provider: 'github' | 'google' | 'none'
-}
-
-const fetchSyncProfile = async (): Promise<UserProfile | null> => {
-  const githubRes = await fetch('/api/auth/github/status')
-  if (githubRes.ok) {
-    const github = await githubRes.json()
-    if (github.authenticated && github.user) {
-      return {
-        name: github.user.name || github.user.login,
-        picture: github.user.avatarUrl,
-        provider: 'github',
-      }
-    }
-  }
-
-  const googleRes = await fetch('/api/auth/user')
-  if (!googleRes.ok) return null
-
-  const google = await googleRes.json()
-  if (!google) return null
-
-  return {
-    name: google.name,
-    picture: google.picture,
-    email: google.email,
-    provider: 'google',
-  }
-}
 
 const Header: React.FC = () => {
   const { toggleSidebar } = useSidebar()
+  const { user } = useAuth()
   const [query, setQuery] = useState('')
   const [visible, setVisible] = useState(true)
   const [isSearchFocused, setIsSearchFocused] = useState(false)
   const navigate = useNavigate()
   const hideTimerRef = useRef<NodeJS.Timeout | null>(null)
   const HIDE_DELAY_MS = 3000
-
-  const { data: user } = useQuery<UserProfile | null>({
-    queryKey: ['sync-profile'],
-    queryFn: fetchSyncProfile,
-    staleTime: 30000,
-  })
 
   useEffect(() => {
     const handleScroll = () => {
@@ -116,18 +77,16 @@ const Header: React.FC = () => {
 
         <NotificationBell />
 
-        <Link to="/settings?tab=sync" className={styles.profileBtn} aria-label="Sync settings">
-          {user?.picture ? (
+        <Link to="/settings" className={styles.profileBtn} aria-label="Profile settings">
+          {user?.profilePictureUrl ? (
             <img
-              src={user.picture}
-              alt={user.name}
+              src={user.profilePictureUrl}
+              alt={user.displayName}
               className={styles.profileImg}
               referrerPolicy="no-referrer"
             />
-          ) : user?.provider === 'github' ? (
-            <FaGithub />
           ) : (
-            <FaCloud />
+            <FaUserCircle />
           )}
         </Link>
       </div>
