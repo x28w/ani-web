@@ -35,8 +35,14 @@ export class SettingsController {
 
   updateSettings = async (req: Request, res: Response) => {
     try {
+      const key = String(req.body.key || '')
+      if (req.siteUser?.role === 'guest') {
+        if (key === 'titlePreference') return res.json({ success: true })
+        return res.status(403).json({ error: 'Guest settings are limited.' })
+      }
+
       await performWriteTransaction(req.db, (tx) => {
-        SettingsRepository.upsert(tx, req.body.key, String(req.body.value))
+        SettingsRepository.upsert(tx, key, String(req.body.value))
       })
       res.json({ success: true })
     } catch {
