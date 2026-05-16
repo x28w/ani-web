@@ -119,6 +119,61 @@
   font-weight: 500;
 }
 
+.profileRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.profileAvatar {
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  border: 2px solid var(--border-secondary);
+  background: var(--bg-tertiary);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.profileAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profileAvatar svg {
+  font-size: 2.7rem;
+  color: var(--text-tertiary);
+}
+
+.profileDetails {
+  flex: 1;
+  min-width: 160px;
+}
+
+.profileDetails h4 {
+  color: var(--text-primary);
+  font-size: var(--font-size-base);
+  margin: 0 0 var(--space-1);
+}
+
+.profileDetails span {
+  color: var(--text-tertiary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.profileActions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .controls {
   display: flex;
   gap: var(--space-4);
@@ -191,5 +246,10 @@
 
   .sectionCard {
     padding: var(--space-6);
+  }
+
+  .profileActions {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
