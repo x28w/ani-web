@@ -13,9 +13,14 @@ const Header: React.FC = () => {
   const [query, setQuery] = useState('')
   const [visible, setVisible] = useState(true)
   const [isSearchFocused, setIsSearchFocused] = useState(false)
+  const [profileImageFailed, setProfileImageFailed] = useState(false)
   const navigate = useNavigate()
   const hideTimerRef = useRef<NodeJS.Timeout | null>(null)
   const HIDE_DELAY_MS = 3000
+
+  useEffect(() => {
+    setProfileImageFailed(false)
+  }, [user?.profilePictureUrl])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -78,12 +83,13 @@ const Header: React.FC = () => {
         <NotificationBell />
 
         <Link to="/settings" className={styles.profileBtn} aria-label="Profile settings">
-          {user?.profilePictureUrl ? (
+          {user?.profilePictureUrl && !profileImageFailed ? (
             <img
               src={user.profilePictureUrl}
               alt={user.displayName}
               className={styles.profileImg}
               referrerPolicy="no-referrer"
+              onError={() => setProfileImageFailed(true)}
             />
           ) : (
             <FaUserCircle />
