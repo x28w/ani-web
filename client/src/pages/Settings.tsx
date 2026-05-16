@@ -26,6 +26,7 @@ const Settings: React.FC = () => {
   )
   const [statusMessage, setStatusMessage] = useState('')
   const [profileStatus, setProfileStatus] = useState('')
+  const [profileImageFailed, setProfileImageFailed] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const profileInputRef = useRef<HTMLInputElement>(null)
   const { lowEndMode, setLowEndMode } = useLowEndMode()
@@ -39,6 +40,10 @@ const Settings: React.FC = () => {
   React.useEffect(() => {
     document.title = 'Settings - ani-web'
   }, [])
+
+  React.useEffect(() => {
+    setProfileImageFailed(false)
+  }, [user?.profilePictureUrl])
 
   React.useEffect(() => {
     const tab = searchParams.get('tab') as SettingsTab | null
@@ -131,6 +136,7 @@ const Settings: React.FC = () => {
     setProfileStatus('Uploading profile picture...')
     try {
       await uploadProfilePicture(file)
+      setProfileImageFailed(false)
       setProfileStatus('Profile picture updated.')
     } catch (error) {
       setProfileStatus(error instanceof Error ? error.message : 'Profile picture upload failed.')
@@ -152,8 +158,12 @@ const Settings: React.FC = () => {
               <p>Customize the profile shown in the header for this login.</p>
               <div className={styles.profileRow}>
                 <div className={styles.profileAvatar}>
-                  {user?.profilePictureUrl ? (
-                    <img src={user.profilePictureUrl} alt={user.displayName} />
+                  {user?.profilePictureUrl && !profileImageFailed ? (
+                    <img
+                      src={user.profilePictureUrl}
+                      alt={user.displayName}
+                      onError={() => setProfileImageFailed(true)}
+                    />
                   ) : (
                     <FaUserCircle />
                   )}
