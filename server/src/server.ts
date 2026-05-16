@@ -24,6 +24,7 @@ import { createDataRouter } from './routes/data.routes'
 import { createProxyRouter } from './routes/proxy.routes'
 import { createSettingsRouter } from './routes/settings.routes'
 import { createInsightsRouter } from './routes/insights.routes'
+import { createSiteAuthRouter, requireSiteAdmin, requireSiteAuth } from './site-auth'
 
 declare module 'express-serve-static-core' {
   interface Request {
@@ -103,17 +104,21 @@ app.use(
 app.use(cors())
 app.use(express.json({ limit: '10mb' }))
 
+app.use('/api/site-auth', createSiteAuthRouter())
+
 app.use(
   '/api/auth',
+  requireSiteAdmin,
   createAuthRouter((database) => runSyncSequence(database))
 )
 
-app.use('/api', createWatchlistRouter(allAnimeProvider))
-app.use('/api', createDataRouter(apiCache, providers))
-app.use('/api', createProxyRouter())
-app.use('/api', createInsightsRouter(allAnimeProvider))
+app.use('/api', requireSiteAuth, createWatchlistRouter(allAnimeProvider))
+app.use('/api', requireSiteAuth, createDataRouter(apiCache, providers))
+app.use('/api', requireSiteAuth, createProxyRouter())
+app.use('/api', requireSiteAuth, createInsightsRouter(allAnimeProvider))
 app.use(
   '/api',
+  requireSiteAuth,
   createSettingsRouter(
     allAnimeProvider,
     () => db,

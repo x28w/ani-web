@@ -40,6 +40,61 @@ const syncMutex = new Mutex()
 let isSyncing = false
 let activeProvider: 'github' | 'google' | 'rclone' | 'none' = 'none'
 
+function getDefaultProgressUserId(): string {
+  if (process.env.SITE_USERS) {
+    try {
+      const users = JSON.parse(process.env.SITE_USERS)
+      if (Array.isArray(users)) {
+        const firstUser = users.find((user) => typeof user?.username === 'string')
+        if (firstUser?.username?.trim()) return firstUser.username.trim()
+      }
+    } catch {
+      return 'local'
+    }
+  }
+
+  return process.env.SITE_LOGIN_USER?.trim() || 'local'
+}
+
+function getTableColumns(db: DatabaseWrapper, tableName: string): string[] {
+  let columns: string[] = []
+  db.all(`PRAGMA table_info(${tableName})`, (error: Error | null, rows: unknown) => {
+    if (error) throw error
+    columns = (rows as { name: string }[]).map((row) => row.name)
+  })
+  return columns
+}
+
+function migrateWatchedEpisodesForUsers(db: DatabaseWrapper, initOpts: { skipSave: boolean }) {
+  const columns = getTableColumns(db, 'watched_episodes')
+  if (columns.includes('userId')) return
+
+  const defaultUserId = getDefaultProgressUserId().replace(/'/g, "''")
+  db.run(
+    `CREATE TABLE IF NOT EXISTS watched_episodes_new (
+      userId TEXT NOT NULL,
+      showId TEXT NOT NULL,
+      episodeNumber TEXT NOT NULL,
+      watchedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      currentTime REAL DEFAULT 0,
+      duration REAL DEFAULT 0,
+      PRIMARY KEY (userId, showId, episodeNumber)
+    )`,
+    undefined,
+    undefined,
+    initOpts
+  )
+  db.run(
+    `INSERT OR REPLACE INTO watched_episodes_new (userId, showId, episodeNumber, watchedAt, currentTime, duration)
+     SELECT '${defaultUserId}', showId, episodeNumber, watchedAt, currentTime, duration FROM watched_episodes`,
+    undefined,
+    undefined,
+    initOpts
+  )
+  db.run('DROP TABLE watched_episodes', undefined, undefined, initOpts)
+  db.run('ALTER TABLE watched_episodes_new RENAME TO watched_episodes', undefined, undefined, initOpts)
+}
+
 export async function initSyncProvider(): Promise<void> {
   if (githubSyncService.isAuthenticated()) {
     activeProvider = 'github'
@@ -221,7 +276,7 @@ export async function syncDownOnBoot(
             log.info('Backup restored successfully after failed sync down.')
           } catch (restoreErr) {
             log.error({ err: restoreErr }, 'Critical: restore from backup also failed.')
-            // The DB may be corrupt – propagate so the caller can exit cleanly.
+            // The DB may be corrupt - propagate so the caller can exit cleanly.
             throw new Error('Sync down and restore both failed. Database may be corrupt.', {
               cause: restoreErr,
             })
@@ -325,7 +380,7 @@ export async function performWriteTransaction(
   db: DatabaseWrapper,
   runnable: (tx: DatabaseWrapper) => void
 ): Promise<void> {
-  // node:sqlite is fully synchronous — serialize/run/get all complete before returning,
+  // node:sqlite is fully synchronous - serialize/run/get all complete before returning,
   // so we can avoid the nested Promise/callback pattern that could hang forever if
   // setLocalManifestVersion threw after resolve/reject was no longer reachable.
   db.serialize(() => {
@@ -340,7 +395,7 @@ export async function performWriteTransaction(
   )
   const newVersion = row?.value ?? 1
 
-  // Only the manifest write is truly async (disk I\O); errors here propagate normally.
+  // Only the manifest write is truly async (disk I/O); errors here propagate normally.
   await setLocalManifestVersion(newVersion)
 }
 
@@ -366,11 +421,12 @@ export async function initializeDatabase(dbPath: string): Promise<DatabaseWrappe
       initOpts
     )
     db.run(
-      `CREATE TABLE IF NOT EXISTS watched_episodes (showId TEXT NOT NULL, episodeNumber TEXT NOT NULL, watchedAt DATETIME DEFAULT CURRENT_TIMESTAMP, currentTime REAL DEFAULT 0, duration REAL DEFAULT 0, PRIMARY KEY (showId, episodeNumber))`,
+      `CREATE TABLE IF NOT EXISTS watched_episodes (userId TEXT NOT NULL DEFAULT 'local', showId TEXT NOT NULL, episodeNumber TEXT NOT NULL, watchedAt DATETIME DEFAULT CURRENT_TIMESTAMP, currentTime REAL DEFAULT 0, duration REAL DEFAULT 0, PRIMARY KEY (userId, showId, episodeNumber))`,
       undefined,
       undefined,
       initOpts
     )
+    migrateWatchedEpisodesForUsers(db, initOpts)
     db.run(
       `CREATE TABLE IF NOT EXISTS settings (key TEXT NOT NULL, value TEXT, PRIMARY KEY (key))`,
       undefined,
@@ -415,7 +471,13 @@ export async function initializeDatabase(dbPath: string): Promise<DatabaseWrappe
       initOpts
     )
     db.run(
-      `CREATE INDEX IF NOT EXISTS idx_watched_episodes_showId_episodeNumber ON watched_episodes(showId, episodeNumber)`,
+      `CREATE INDEX IF NOT EXISTS idx_watched_episodes_userId ON watched_episodes(userId)`,
+      undefined,
+      undefined,
+      initOpts
+    )
+    db.run(
+      `CREATE INDEX IF NOT EXISTS idx_watched_episodes_showId_episodeNumber ON watched_episodes(userId, showId, episodeNumber)`,
       undefined,
       undefined,
       initOpts
