@@ -4,6 +4,7 @@ import { AllAnimeProvider } from '../providers/allanime.provider'
 import multer from 'multer'
 import { CONFIG } from '../config'
 import { DatabaseWrapper } from '../db'
+import { requireSiteAdmin } from '../site-auth'
 
 export function createSettingsRouter(
   provider: AllAnimeProvider,
@@ -16,7 +17,7 @@ export function createSettingsRouter(
 
   router.get('/settings', controller.getSettings)
   router.post('/settings', controller.updateSettings)
-  router.get('/backup-db', controller.backupDatabase)
+  router.get('/backup-db', requireSiteAdmin, controller.backupDatabase)
 
   const restoreStorage = multer({
     storage: multer.diskStorage({
@@ -25,7 +26,7 @@ export function createSettingsRouter(
     }),
   })
 
-  router.post('/restore-db', restoreStorage.single('dbfile'), (req, res) =>
+  router.post('/restore-db', requireSiteAdmin, restoreStorage.single('dbfile'), (req, res) =>
     controller.restoreDatabase(req, res, getDb(), initializeDatabase, setDb)
   )
 
