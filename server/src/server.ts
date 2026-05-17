@@ -167,8 +167,10 @@ async function main() {
   })
   let debounceTimer: NodeJS.Timeout
 
-  const expressServer = app.listen(CONFIG.PORT, () => {
-    logger.info(`Server running on http://localhost:${CONFIG.PORT}`)
+  const HOST = process.env.IP || process.env.HOST || '::'
+
+  const expressServer = app.listen(CONFIG.PORT, HOST, () => {
+    logger.info(`Server running on http://${HOST}:${CONFIG.PORT}`)
   })
 
   watcher.on('change', () => {
