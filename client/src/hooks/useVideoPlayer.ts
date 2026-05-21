@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import type { SkipInterval, SubtitleTrack } from '../types/player'
 
 interface VideoPlayerProps {
@@ -16,6 +17,7 @@ interface VideoPlayerProps {
 }
 
 const useVideoPlayer = ({ skipIntervals, showId, episodeNumber, showMeta }: VideoPlayerProps) => {
+  const queryClient = useQueryClient()
   const videoRef = useRef<HTMLVideoElement>(null)
   const playerContainerRef = useRef<HTMLDivElement>(null)
   const progressBarRef = useRef<HTMLDivElement>(null)
@@ -85,6 +87,14 @@ const useVideoPlayer = ({ skipIntervals, showId, episodeNumber, showMeta }: Vide
     }
   }, [showId, episodeNumber, showMeta])
 
+  const refreshProgressQueries = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['continueWatchingFast'] })
+    queryClient.invalidateQueries({ queryKey: ['continueWatchingUpNext'] })
+    queryClient.invalidateQueries({ queryKey: ['continueWatching'] })
+    queryClient.invalidateQueries({ queryKey: ['allContinueWatching'] })
+    if (showId) queryClient.invalidateQueries({ queryKey: ['show-data', showId] })
+  }, [queryClient, showId])
+
   const sendProgressUpdate = useCallback(
     (isFinalUpdate = false) => {
       if (hasEnded.current) return false
@@ -117,11 +127,15 @@ const useVideoPlayer = ({ skipIntervals, showId, episodeNumber, showMeta }: Vide
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
         keepalive: true,
-      }).catch((err) => console.error('Failed to update progress:', err))
+      })
+        .then((response) => {
+          if (response.ok) refreshProgressQueries()
+        })
+        .catch((err) => console.error('Failed to update progress:', err))
 
       return true
     },
-    [buildProgressPayload]
+    [buildProgressPayload, refreshProgressQueries]
   )
 
   useEffect(() => {
@@ -331,8 +345,12 @@ const useVideoPlayer = ({ skipIntervals, showId, episodeNumber, showMeta }: Vide
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
       keepalive: true,
-    }).catch((err) => console.error('Failed to send final progress:', err))
-  }, [buildProgressPayload])
+    })
+      .then((response) => {
+        if (response.ok) refreshProgressQueries()
+      })
+      .catch((err) => console.error('Failed to send final progress:', err))
+  }, [buildProgressPayload, refreshProgressQueries])
 
   const onEnded = useCallback(() => {
     hasEnded.current = true

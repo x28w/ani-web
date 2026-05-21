@@ -11,6 +11,7 @@
   },
   "scripts": {
     "install:client": "npm install --prefix client",
+    "setup": "npm install --prefix client && npm install --prefix server",
     "build": "npm run build --prefix client && npm run build --prefix server",
     "start": "node orchestrator.js prod",
     "dev": "node orchestrator.js dev",

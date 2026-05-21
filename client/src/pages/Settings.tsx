@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '../components/common/Button'
 import TitlePreferenceToggle from '../components/common/TitlePreferenceToggle'
 import styles from './Settings.module.css'
@@ -8,8 +8,17 @@ import GoogleAuthSettings from '../components/settings/GoogleAuthSettings'
 import WatchlistSettings from '../components/settings/WatchlistSettings'
 import RcloneSettings from '../components/settings/RcloneSettings'
 import SyncProviderSelector from '../components/settings/SyncProviderSelector'
-import { FaCog, FaCloud, FaDatabase, FaList } from 'react-icons/fa'
+import {
+  FaCog,
+  FaCloud,
+  FaDatabase,
+  FaList,
+  FaSignOutAlt,
+  FaUpload,
+  FaUserCircle,
+} from 'react-icons/fa'
 import { useLowEndMode } from '../contexts/LowEndModeContext'
+import { useAuth } from '../contexts/AuthContext'
 import ToggleSwitch from '../components/common/ToggleSwitch'
 import packageJson from '../../../package.json'
 import { deleteTelemetryData } from '../hooks/useTelemetry'
@@ -18,6 +27,8 @@ type SettingsTab = 'general' | 'sync' | 'watchlist' | 'database'
 
 const Settings: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const { user, logout, maxProfilePictureBytes, uploadProfilePicture } = useAuth()
   const initialTab = searchParams.get('tab') as SettingsTab | null
   const [activeTab, setActiveTab] = useState<SettingsTab>(
     initialTab && ['general', 'sync', 'watchlist', 'database'].includes(initialTab)
@@ -25,8 +36,18 @@ const Settings: React.FC = () => {
       : 'general'
   )
   const [statusMessage, setStatusMessage] = useState('')
+  const [profileStatus, setProfileStatus] = useState('')
+  const [profileImageFailed, setProfileImageFailed] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const profileInputRef = useRef<HTMLInputElement>(null)
   const { lowEndMode, setLowEndMode } = useLowEndMode()
+  const isAdmin = user?.role === 'admin'
+  const isGuest = user?.role === 'guest'
+
+  const isTabAllowed = React.useCallback(
+    (tab: SettingsTab) => tab === 'general' || (!isGuest && tab === 'watchlist') || isAdmin,
+    [isAdmin, isGuest]
+  )
   const [telemetryEnabled, setTelemetryEnabled] = useState(
     localStorage.getItem('telemetry_enabled') !== 'false'
   )
@@ -44,13 +65,24 @@ const Settings: React.FC = () => {
   }, [])
 
   React.useEffect(() => {
+    setProfileImageFailed(false)
+  }, [user?.profilePictureUrl])
+
+  React.useEffect(() => {
     const tab = searchParams.get('tab') as SettingsTab | null
-    if (tab && ['general', 'sync', 'watchlist', 'database'].includes(tab)) {
+    if (tab && ['general', 'sync', 'watchlist', 'database'].includes(tab) && isTabAllowed(tab)) {
       setActiveTab(tab)
+      return
     }
-  }, [searchParams])
+
+    if (!isTabAllowed(activeTab)) {
+      setActiveTab('general')
+      setSearchParams({})
+    }
+  }, [activeTab, isTabAllowed, searchParams, setSearchParams])
 
   const selectTab = (tab: SettingsTab) => {
+    if (!isTabAllowed(tab)) return
     setActiveTab(tab)
     setSearchParams(tab === 'general' ? {} : { tab })
   }
@@ -110,11 +142,96 @@ const Settings: React.FC = () => {
     fileInputRef.current?.click()
   }
 
+  const triggerProfileFileSelect = () => {
+    profileInputRef.current?.click()
+  }
+
+  const handleProfilePictureChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+
+    if (file.size > maxProfilePictureBytes) {
+      setProfileStatus('Profile picture must be 1 MB or smaller.')
+      return
+    }
+
+    setProfileStatus('Uploading profile picture...')
+    try {
+      await uploadProfilePicture(file)
+      setProfileImageFailed(false)
+      setProfileStatus('Profile picture updated.')
+    } catch (error) {
+      setProfileStatus(error instanceof Error ? error.message : 'Profile picture upload failed.')
+    }
+  }
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/login', { replace: true })
+  }
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'general':
+        if (isGuest) {
+          return (
+            <div className={styles.tabContent}>
+              <div className={styles.sectionCard}>
+                <h3>Website Language</h3>
+                <p>Choose how anime titles are shown while browsing as a guest.</p>
+                <div className={styles.settingItem}>
+                  <TitlePreferenceToggle title="Website Language" />
+                </div>
+                <div className={styles.guestActions}>
+                  <Button variant="secondary" onClick={handleLogout}>
+                    <FaSignOutAlt /> Sign out
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
         return (
           <div className={styles.tabContent}>
+            <div className={styles.sectionCard}>
+              <h3>Profile</h3>
+              <p>Customize the profile shown in the header for this login.</p>
+              <div className={styles.profileRow}>
+                <div className={styles.profileAvatar}>
+                  {user?.profilePictureUrl && !profileImageFailed ? (
+                    <img
+                      src={user.profilePictureUrl}
+                      alt={user.displayName}
+                      onError={() => setProfileImageFailed(true)}
+                    />
+                  ) : (
+                    <FaUserCircle />
+                  )}
+                </div>
+                <div className={styles.profileDetails}>
+                  <h4>{user?.displayName || user?.username}</h4>
+                  <span>{isAdmin ? 'Admin' : 'User'}</span>
+                </div>
+                <div className={styles.profileActions}>
+                  <Button onClick={triggerProfileFileSelect}>
+                    <FaUpload /> Upload picture
+                  </Button>
+                  <Button variant="secondary" onClick={handleLogout}>
+                    <FaSignOutAlt /> Sign out
+                  </Button>
+                </div>
+              </div>
+              <input
+                type="file"
+                ref={profileInputRef}
+                onChange={handleProfilePictureChange}
+                style={{ display: 'none' }}
+                accept="image/png,image/jpeg,image/webp,image/gif"
+              />
+              {profileStatus && <p className={styles.status}>{profileStatus}</p>}
+            </div>
             <div className={styles.sectionCard}>
               <h3>Appearance & Preferences</h3>
               <p>Configure how titles are displayed and other general preferences.</p>
@@ -207,6 +324,7 @@ const Settings: React.FC = () => {
           </div>
         )
       case 'sync':
+        if (!isAdmin) return null
         return (
           <div className={styles.tabContent}>
             <SyncProviderSelector />
@@ -222,6 +340,7 @@ const Settings: React.FC = () => {
           </div>
         )
       case 'database':
+        if (!isAdmin) return null
         return (
           <div className={styles.tabContent}>
             <div className={styles.sectionCard}>
@@ -253,7 +372,7 @@ const Settings: React.FC = () => {
     <div className="page-container">
       <div className={styles.settingsHeader}>
         <h1 className={styles.pageTitle}>Settings</h1>
-        <p className={styles.pageSubtitle}>Manage your preferences and data synchronization</p>
+        <p className={styles.pageSubtitle}>Manage your profile, preferences, and watchlist</p>
       </div>
 
       <div className={styles.settingsLayout}>
@@ -264,24 +383,30 @@ const Settings: React.FC = () => {
           >
             <FaCog /> <span>General</span>
           </button>
-          <button
-            className={`${styles.sidebarItem} ${activeTab === 'sync' ? styles.active : ''}`}
-            onClick={() => selectTab('sync')}
-          >
-            <FaCloud /> <span>Synchronization</span>
-          </button>
-          <button
-            className={`${styles.sidebarItem} ${activeTab === 'watchlist' ? styles.active : ''}`}
-            onClick={() => selectTab('watchlist')}
-          >
-            <FaList /> <span>Watchlist</span>
-          </button>
-          <button
-            className={`${styles.sidebarItem} ${activeTab === 'database' ? styles.active : ''}`}
-            onClick={() => selectTab('database')}
-          >
-            <FaDatabase /> <span>Database</span>
-          </button>
+          {isAdmin && (
+            <button
+              className={`${styles.sidebarItem} ${activeTab === 'sync' ? styles.active : ''}`}
+              onClick={() => selectTab('sync')}
+            >
+              <FaCloud /> <span>Synchronization</span>
+            </button>
+          )}
+          {!isGuest && (
+            <button
+              className={`${styles.sidebarItem} ${activeTab === 'watchlist' ? styles.active : ''}`}
+              onClick={() => selectTab('watchlist')}
+            >
+              <FaList /> <span>Watchlist</span>
+            </button>
+          )}
+          {isAdmin && (
+            <button
+              className={`${styles.sidebarItem} ${activeTab === 'database' ? styles.active : ''}`}
+              onClick={() => selectTab('database')}
+            >
+              <FaDatabase /> <span>Database</span>
+            </button>
+          )}
         </aside>
 
         <main className={styles.mainContent}>{renderTabContent()}</main>

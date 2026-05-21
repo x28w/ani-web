@@ -1,5 +1,5 @@
 import { useEffect, Suspense, lazy } from 'react'
-import { Routes, Route, Navigate, useParams } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom'
 import Header from './components/layout/Header'
 import Sidebar from './components/layout/Sidebar'
 import Footer from './components/layout/Footer'
@@ -14,11 +14,13 @@ const Search = lazy(() => import('./pages/Search'))
 const MAL = lazy(() => import('./pages/MAL'))
 const Insights = lazy(() => import('./pages/Insights'))
 const AnimeInfoPage = lazy(() => import('./pages/AnimeInfoPage'))
+const Login = lazy(() => import('./pages/Login'))
 
 import { useSidebar } from './hooks/useSidebar'
 import { Toaster } from 'react-hot-toast'
 import TopProgressBar from './components/common/TopProgressBar'
 import ErrorBoundary from './components/common/ErrorBoundary'
+import { useAuth } from './contexts/AuthContext'
 
 const PlayerRedirect = () => {
   const { id, episodeNumber } = useParams()
@@ -27,6 +29,8 @@ const PlayerRedirect = () => {
 
 function App() {
   const { isOpen, setIsOpen } = useSidebar()
+  const { authenticated, loading } = useAuth()
+  const location = useLocation()
   useTelemetry()
 
   useEffect(() => {
@@ -50,40 +54,77 @@ function App() {
     }
   }, [isOpen, setIsOpen])
 
+  const toaster = (
+    <Toaster
+      position="top-center"
+      toastOptions={{
+        style: {
+          background: '#262829',
+          color: '#fff',
+          border: '1px solid #444',
+        },
+        success: {
+          style: {
+            background: 'var(--accent)',
+            color: '#fff',
+          },
+          iconTheme: {
+            primary: '#fff',
+            secondary: 'var(--accent)',
+          },
+        },
+        error: {
+          style: {
+            background: '#992a2a',
+            color: '#fff',
+          },
+        },
+      }}
+    />
+  )
+
+  if (loading) {
+    return (
+      <>
+        {toaster}
+        <TopProgressBar />
+      </>
+    )
+  }
+
+  if (!authenticated) {
+    return (
+      <>
+        {toaster}
+        <Suspense fallback={<TopProgressBar />}>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route
+              path="*"
+              element={
+                <Navigate
+                  to="/login"
+                  state={{ from: `${location.pathname}${location.search}` }}
+                  replace
+                />
+              }
+            />
+          </Routes>
+        </Suspense>
+      </>
+    )
+  }
+
   return (
     <div className="app-container">
-      <Toaster
-        position="top-center"
-        toastOptions={{
-          style: {
-            background: '#262829',
-            color: '#fff',
-            border: '1px solid #444',
-          },
-          success: {
-            style: {
-              background: 'var(--accent)',
-              color: '#fff',
-            },
-            iconTheme: {
-              primary: '#fff',
-              secondary: 'var(--accent)',
-            },
-          },
-          error: {
-            style: {
-              background: '#992a2a',
-              color: '#fff',
-            },
-          },
-        }}
-      />
+      {toaster}
       <Header />
       <Sidebar />
       <main>
         <ErrorBoundary>
           <Suspense fallback={<TopProgressBar />}>
             <Routes>
+              <Route path="/login" element={<Navigate to="/" replace />} />
               <Route path="/" element={<Home />} />
               <Route path="/watchlist/:filter?" element={<Watchlist />} />
               <Route path="/search" element={<Search />} />

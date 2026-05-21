@@ -16,7 +16,12 @@ interface TitlePreferenceProviderProps {
 
 export const TitlePreferenceProvider: React.FC<TitlePreferenceProviderProps> = ({ children }) => {
   const [titlePreference, setTitlePreference] = useState<'name' | 'nativeName' | 'englishName'>(
-    'englishName'
+    () => {
+      const saved = localStorage.getItem('titlePreference')
+      return saved === 'name' || saved === 'nativeName' || saved === 'englishName'
+        ? saved
+        : 'englishName'
+    }
   )
   const [loading, setLoading] = useState(true)
 
