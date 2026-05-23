@@ -19,7 +19,7 @@ interface ImdbSuggestion {
   i?: { imageUrl?: string }
 }
 
-const EMBED_BASE_URL = 'https://www.2embed.cc'
+const EMBED_BASE_URL = 'https://hnembed.cc'
 const IMDB_SUGGEST_URL = 'https://v3.sg.media-imdb.com/suggestion/x'
 const TV_TYPES = new Set(['tvSeries', 'tvMiniSeries'])
 
