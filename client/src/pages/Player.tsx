@@ -4,7 +4,15 @@ import toast from 'react-hot-toast'
 import styles from './Player.module.css'
 import layoutStyles from './PlayerPageLayout.module.css'
 import ToggleSwitch from '../components/common/ToggleSwitch'
-import { FaCheck, FaPlus, FaChevronDown, FaChevronUp, FaBackward, FaForward } from 'react-icons/fa'
+import {
+  FaCheck,
+  FaPlus,
+  FaChevronDown,
+  FaChevronUp,
+  FaBackward,
+  FaForward,
+  FaExternalLinkAlt,
+} from 'react-icons/fa'
 import { fixThumbnailUrl } from '../lib/utils'
 import ResumeModal from '../components/common/ResumeModal'
 import useIsMobile from '../hooks/useIsMobile'
@@ -922,6 +930,21 @@ const Player: React.FC = () => {
             localStorage.setItem('preferredProvider', newProvider)
           }}
         />
+
+        {state.selectedProvider === 'animepahe' &&
+          state.selectedSource?.type === 'iframe' &&
+          state.selectedLink?.link && (
+            <a
+              className={styles.externalPlayerLink}
+              href={state.selectedLink.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Open AnimePahe player in a new tab"
+            >
+              <FaExternalLinkAlt />
+              <span>Open Player</span>
+            </a>
+          )}
 
         {state.selectedProvider === '2embed' && (
           <div className={styles.providerSelectContainer}>
