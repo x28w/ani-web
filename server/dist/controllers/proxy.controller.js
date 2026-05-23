@@ -13,6 +13,8 @@ const node_cache_1 = __importDefault(require("node-cache"));
 const config_1 = require("../config");
 const fs_1 = __importDefault(require("fs"));
 const proxyCache = new node_cache_1.default({ stdTTL: 30, checkperiod: 60 });
+const KWIK_EMBED_HOSTS = new Set(['kwik.cx', 'kwik.si']);
+const ANIMEPAHE_REFERER = 'https://animepahe.pw/';
 const httpAgent = new http_1.default.Agent({ keepAlive: true, maxSockets: 100 });
 const httpsAgent = new https_1.default.Agent({ keepAlive: true, maxSockets: 100 });
 httpAgent.setMaxListeners(100);
@@ -24,6 +26,30 @@ exports.axiosInstance = axios_1.default.create({
 });
 (0, axios_retry_1.default)(exports.axiosInstance, { retries: 3, retryDelay: axios_retry_1.default.exponentialDelay });
 class ProxyController {
+    abortWhenClientLeaves(res, abortController) {
+        res.on('close', () => {
+            if (!res.writableEnded) {
+                abortController.abort();
+            }
+        });
+    }
+    getAllowedKwikEmbedUrl(value) {
+        if (typeof value !== 'string')
+            return null;
+        try {
+            const url = new URL(value);
+            if (url.protocol !== 'https:' ||
+                !KWIK_EMBED_HOSTS.has(url.hostname.toLowerCase()) ||
+                !/^\/e\/[A-Za-z0-9_-]+$/.test(url.pathname) ||
+                Boolean(url.username || url.password || url.search || url.hash)) {
+                return null;
+            }
+            return url;
+        }
+        catch {
+            return null;
+        }
+    }
     handleProxy = async (req, res) => {
         const { url, referer } = req.query;
         if (!url)
@@ -32,9 +58,7 @@ class ProxyController {
         const refererStr = referer || '';
         const cacheKey = `m3u8-${urlStr}-${refererStr}`;
         const abortController = new AbortController();
-        req.on('close', () => {
-            abortController.abort();
-        });
+        this.abortWhenClientLeaves(res, abortController);
         try {
             const headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -57,6 +81,8 @@ class ProxyController {
                     signal: abortController.signal,
                 });
                 const baseUrl = new URL(urlStr);
+                const proxiedMediaUrl = (targetUrl) => `/api/proxy?url=${encodeURIComponent(targetUrl)}&referer=${encodeURIComponent(refererStr)}`;
+                const requiresProxyHeaders = Boolean(refererStr);
                 const rewritten = resp.data
                     .split('\n')
                     .map((l) => {
@@ -64,17 +90,17 @@ class ProxyController {
                     if (!line)
                         return l;
                     if (line.startsWith('#')) {
-                        return line.replace(/URI="([^"]+)"/g, (match, uri) => {
+                        return line.replace(/URI="([^"]+)"/g, (_match, uri) => {
                             const fullUri = new URL(uri, baseUrl).href;
-                            if (fullUri.includes('.m3u8')) {
-                                return `URI="/api/proxy?url=${encodeURIComponent(fullUri)}&referer=${encodeURIComponent(refererStr)}"`;
+                            if (requiresProxyHeaders || fullUri.includes('.m3u8')) {
+                                return `URI="${proxiedMediaUrl(fullUri)}"`;
                             }
                             return `URI="${fullUri}"`;
                         });
                     }
                     const fullUrl = new URL(line, baseUrl).href;
-                    if (fullUrl.includes('.m3u8')) {
-                        return `/api/proxy?url=${encodeURIComponent(fullUrl)}&referer=${encodeURIComponent(refererStr)}`;
+                    if (requiresProxyHeaders || fullUrl.includes('.m3u8')) {
+                        return proxiedMediaUrl(fullUrl);
                     }
                     return fullUrl;
                 })
@@ -132,14 +158,50 @@ class ProxyController {
                 res.status(500).send('Proxy error');
         }
     };
+    handleEmbedProxy = async (req, res) => {
+        const targetUrl = this.getAllowedKwikEmbedUrl(req.query.url);
+        if (!targetUrl)
+            return res.status(400).send('Unsupported embed URL');
+        const abortController = new AbortController();
+        this.abortWhenClientLeaves(res, abortController);
+        try {
+            const response = await exports.axiosInstance.get(targetUrl.href, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) Gecko/20100101 Firefox/126.0',
+                    Referer: ANIMEPAHE_REFERER,
+                    Origin: 'https://animepahe.pw',
+                },
+                responseType: 'text',
+                signal: abortController.signal,
+            });
+            const baseTag = `<base href="${targetUrl.origin}/">`;
+            const kwikReferer = JSON.stringify(targetUrl.href).replace(/</g, '\\u003c');
+            const playlistProxyPatch = `<script>(function(){var original=Hls.prototype.loadSource;Hls.prototype.loadSource=function(source){if(typeof source==='string'&&source.indexOf('.m3u8')!==-1){source=window.location.origin+'/api/proxy?url='+encodeURIComponent(source)+'&referer='+encodeURIComponent(${kwikReferer});}return original.call(this,source);};})();</script>`;
+            let html = response.data.replace(/<head([^>]*)>/i, `<head$1>${baseTag}`);
+            const patchedHtml = html.replace(/(<script[^>]+hls(?:\.min)?\.js[^>]*><\/script>)/i, `$1${playlistProxyPatch}`);
+            if (patchedHtml === html) {
+                return res.status(502).send('Embed player script not found');
+            }
+            html = patchedHtml;
+            return res
+                .status(200)
+                .set('Content-Type', 'text/html; charset=utf-8')
+                .set('Cache-Control', 'private, max-age=120')
+                .send(html);
+        }
+        catch (e) {
+            if (axios_1.default.isCancel(e))
+                return;
+            if (!res.headersSent)
+                res.status(502).send('Embed proxy error');
+        }
+    };
     handleSubtitleProxy = async (req, res) => {
         const { url, referer } = req.query;
         if (!url)
             return res.status(400).send('URL required');
         const abortController = new AbortController();
-        req.on('close', () => {
-            abortController.abort();
-        });
+        this.abortWhenClientLeaves(res, abortController);
         try {
             const headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -164,9 +226,7 @@ class ProxyController {
         if (!url)
             return res.status(400).send('URL required');
         const abortController = new AbortController();
-        req.on('close', () => {
-            abortController.abort();
-        });
+        this.abortWhenClientLeaves(res, abortController);
         try {
             const targetUrl = url;
             let refererValue = 'https://allanime.day';

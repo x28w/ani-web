@@ -245,7 +245,7 @@ export class AnimePaheProvider implements Provider {
           links: [
             {
               resolutionStr: src.quality || 'Auto',
-              link: src.url,
+              link: `/api/embed-proxy?url=${encodeURIComponent(src.url)}`,
               hls: false,
             },
           ],
