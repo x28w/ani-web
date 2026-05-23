@@ -23,6 +23,11 @@ interface UsePlayerDataReturn {
   moveToCompleted: () => Promise<void>
   setPreferredSource: (sourceName: string) => Promise<void>
   handleToggleDetails: () => Promise<void>
+  recordEpisodeProgress: (
+    episodeNumber: string,
+    currentTime: number,
+    duration?: number
+  ) => Promise<void>
   markEpisodeWatched: (episodeNumber: string, duration: number) => Promise<void>
   isMarkingWatched: boolean
   isUpdatingWatchlistStatus: boolean
@@ -44,6 +49,52 @@ type ProgressShowMeta = Partial<DetailedShowMeta> & {
   thumbnail?: string
   type?: string
   score?: number
+}
+
+const getShowTitle = (showMeta: ProgressShowMeta, fallbackId?: string) => {
+  return (
+    showMeta.name ||
+    showMeta.names?.romaji ||
+    showMeta.names?.english ||
+    showMeta.names?.native ||
+    showMeta.title ||
+    fallbackId ||
+    'Unknown anime'
+  )
+}
+
+const buildProgressPayload = ({
+  showId,
+  episodeNumber,
+  currentTime,
+  duration,
+  showMeta,
+  episodes,
+}: {
+  showId?: string
+  episodeNumber: string
+  currentTime: number
+  duration?: number
+  showMeta: ProgressShowMeta
+  episodes: string[]
+}): ProgressPayload => {
+  const effectiveDuration = Math.max(duration || 0, (showMeta.lengthMin || 0) * 60, currentTime, 1)
+
+  return {
+    showId,
+    episodeNumber,
+    currentTime,
+    duration: effectiveDuration,
+    showName: getShowTitle(showMeta, showId),
+    showThumbnail: showMeta.thumbnail,
+    nativeName: showMeta.names?.native,
+    englishName: showMeta.names?.english,
+    genres: showMeta.genres?.map((genre) => genre.name),
+    popularityScore: showMeta.score ?? showMeta.stats?.averageScore,
+    type: showMeta.type,
+    status: showMeta.status,
+    episodeCount: episodes.length || showMeta.episodes,
+  }
 }
 
 const fetchApi = async (url: string) => {
@@ -373,6 +424,40 @@ export const usePlayerData = (
     await updateWatchlistStatusMutation({ status: 'Completed' })
   }, [updateWatchlistStatusMutation])
 
+  const recordEpisodeProgress = useCallback(
+    async (episodeNumber: string, currentTime: number, duration?: number) => {
+      if (!showId || !showData?.showMeta || !episodeNumber || currentTime <= 0) return
+
+      const payload = buildProgressPayload({
+        showId,
+        episodeNumber,
+        currentTime,
+        duration,
+        showMeta: showData.showMeta,
+        episodes: showData.episodes,
+      })
+
+      saveLocalProgress(payload)
+      queryClient.invalidateQueries({ queryKey: ['show-data', showId] })
+      queryClient.invalidateQueries({ queryKey: ['continueWatchingFast'] })
+      queryClient.invalidateQueries({ queryKey: ['continueWatchingUpNext'] })
+      queryClient.invalidateQueries({ queryKey: ['continueWatching'] })
+      queryClient.invalidateQueries({ queryKey: ['allContinueWatching'] })
+
+      const response = await fetch('/api/update-progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        keepalive: true,
+      }).catch(() => null)
+
+      if (response && !response.ok) {
+        console.warn('Progress was saved locally but the server did not accept the update.')
+      }
+    },
+    [showId, showData, queryClient]
+  )
+
   const { mutateAsync: markEpisodeWatchedMutation } = useMutation({
     mutationFn: async ({
       episodeNumber,
@@ -385,21 +470,14 @@ export const usePlayerData = (
       showMeta: ProgressShowMeta
       episodes: string[]
     }) => {
-      const payload: ProgressPayload = {
+      const payload = buildProgressPayload({
         showId,
         episodeNumber,
-        currentTime: duration,
+        currentTime: Math.max(duration, 1),
         duration,
-        showName: showMeta.name || showMeta.names?.romaji || showMeta.title,
-        showThumbnail: showMeta.thumbnail,
-        nativeName: showMeta.names?.native,
-        englishName: showMeta.names?.english,
-        genres: showMeta.genres?.map((genre) => genre.name),
-        popularityScore: showMeta.score ?? showMeta.stats?.averageScore,
-        type: showMeta.type,
-        status: showMeta.status,
-        episodeCount: episodes.length,
-      }
+        showMeta,
+        episodes,
+      })
 
       saveLocalProgress(payload)
 
@@ -497,6 +575,7 @@ export const usePlayerData = (
     moveToCompleted,
     setPreferredSource,
     handleToggleDetails,
+    recordEpisodeProgress,
     markEpisodeWatched,
     isMarkingWatched: markEpisodeWatchedMutation.isPending,
     isUpdatingWatchlistStatus,

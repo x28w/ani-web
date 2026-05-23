@@ -107,7 +107,7 @@ export const WatchedEpisodesRepository = {
       ) we
       LEFT JOIN shows_meta sm ON we.showId = sm.id
       LEFT JOIN watchlist w ON we.showId = w.id
-      WHERE we.rn = 1 AND COALESCE(w.status, 'Watching') = 'Watching'
+      WHERE we.rn = 1 AND COALESCE(w.status, 'Watching') NOT IN ('Completed', 'Dropped')
       ORDER BY we.watchedAt DESC
       ${limitClause}
     `

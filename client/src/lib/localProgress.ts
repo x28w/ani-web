@@ -65,11 +65,13 @@ const writeLocalProgressEntries = (entries: LocalProgressEntry[]) => {
 export const saveLocalProgress = (payload: ProgressPayload) => {
   const showId = String(payload.showId || '').trim()
   const episodeNumber = String(payload.episodeNumber || '').trim()
-  const name = String(payload.showName || '').trim()
+  const name = String(
+    payload.showName || payload.englishName || payload.nativeName || showId
+  ).trim()
   const currentTime = cleanNumber(payload.currentTime)
   const duration = cleanNumber(payload.duration)
 
-  if (!showId || !episodeNumber || !name || currentTime <= 0) return
+  if (!showId || !episodeNumber || currentTime <= 0) return
 
   const entries = getLocalProgressEntries()
   const nextEntry: LocalProgressEntry = {
