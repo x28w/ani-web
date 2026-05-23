@@ -105,7 +105,8 @@ const fetchApi = async (url: string) => {
 
 export const usePlayerData = (
   showId: string | undefined,
-  episodeNumber: string | undefined
+  episodeNumber: string | undefined,
+  twoEmbedSeasonOverride?: number
 ): UsePlayerDataReturn => {
   const [uiState, dispatch] = useReducer(playerReducer, undefined, createInitialState)
   const queryClient = useQueryClient()
@@ -183,12 +184,13 @@ export const usePlayerData = (
       uiState.selectedProvider,
       uiState.currentMode,
       showData?.showMeta?.name,
+      twoEmbedSeasonOverride,
     ],
     queryFn: async () => {
       if (!showId || !uiState.currentEpisode) throw new Error('Missing params')
 
       let providerShowId = showId
-      if (['animepahe', '123anime', 'animeya'].includes(uiState.selectedProvider)) {
+      if (['animepahe', '123anime', 'animeya', '2embed'].includes(uiState.selectedProvider)) {
         const names = showData?.showMeta?.names
         // AlAnime's `name` field is often the native Japanese script (e.g. "ブリーチ"
         // for Bleach), which gets mapped to names.romaji. Sending katakana/kanji to
@@ -208,9 +210,34 @@ export const usePlayerData = (
           uiState.currentMode === 'dub' ? englishName || romajiName : romajiName || englishName
 
         if (searchQuery) {
-          const searchResults = await fetchApi(
-            `/api/search?query=${encodeURIComponent(searchQuery)}&provider=${uiState.selectedProvider}`
-          )
+          const searchParams = new URLSearchParams({
+            query: String(searchQuery),
+            provider: uiState.selectedProvider,
+          })
+
+          if (uiState.selectedProvider === '2embed') {
+            const aliases = Array.from(
+              new Set(
+                [
+                  names?.english,
+                  names?.romaji,
+                  showData?.showMeta?.englishName,
+                  showData?.showMeta?.name,
+                ]
+                  .filter(
+                    (title): title is string => typeof title === 'string' && title.trim().length > 0
+                  )
+                  .map((title) => title.trim())
+                  .filter((title) => title !== searchQuery)
+              )
+            )
+            if (aliases.length) searchParams.set('aliases', aliases.join('|'))
+            if (twoEmbedSeasonOverride) {
+              searchParams.set('season', String(twoEmbedSeasonOverride))
+            }
+          }
+
+          const searchResults = await fetchApi(`/api/search?${searchParams.toString()}`)
           if (searchResults && searchResults.length > 0) {
             interface SearchResult {
               id: string

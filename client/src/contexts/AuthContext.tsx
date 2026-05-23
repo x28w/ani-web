@@ -17,6 +17,7 @@ interface AuthContextValue {
   browseAsGuest: () => Promise<void>
   logout: () => Promise<void>
   refresh: () => Promise<void>
+  updateDisplayName: (displayName: string) => Promise<void>
   uploadProfilePicture: (file: File) => Promise<void>
 }
 
@@ -30,6 +31,8 @@ interface StatusResponse {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 const DEFAULT_MAX_PROFILE_PICTURE_BYTES = 1024 * 1024
 const PROFILE_PICTURE_KEY_PREFIX = 'ani-web:profile-picture:'
+const DISPLAY_NAME_KEY_PREFIX = 'ani-web:display-name:'
+const MAX_DISPLAY_NAME_LENGTH = 40
 
 async function parseError(response: Response): Promise<string> {
   try {
@@ -48,10 +51,19 @@ function getStoredProfilePicture(username: string): string | undefined {
   }
 }
 
-function withStoredProfilePicture(user: SiteUser | null): SiteUser | null {
+function getStoredDisplayName(username: string): string | undefined {
+  try {
+    return localStorage.getItem(`${DISPLAY_NAME_KEY_PREFIX}${username}`)?.trim() || undefined
+  } catch {
+    return undefined
+  }
+}
+
+function withStoredProfile(user: SiteUser | null): SiteUser | null {
   if (!user) return null
   const profilePictureUrl = getStoredProfilePicture(user.username) || user.profilePictureUrl
-  return profilePictureUrl ? { ...user, profilePictureUrl } : user
+  const displayName = getStoredDisplayName(user.username) || user.displayName
+  return { ...user, displayName, profilePictureUrl }
 }
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -75,7 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const applyStatus = useCallback((status: StatusResponse) => {
     setAuthenticated(status.authenticated)
     setEnabled(status.enabled)
-    setUser(withStoredProfilePicture(status.user))
+    setUser(withStoredProfile(status.user))
     setMaxProfilePictureBytes(status.maxProfilePictureBytes || DEFAULT_MAX_PROFILE_PICTURE_BYTES)
   }, [])
 
@@ -127,6 +139,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null)
   }, [])
 
+  const updateDisplayName = useCallback(
+    async (displayName: string) => {
+      if (!user) {
+        throw new Error('Sign in before setting a display name.')
+      }
+
+      const trimmedName = displayName.trim()
+      if (trimmedName.length > MAX_DISPLAY_NAME_LENGTH) {
+        throw new Error(`Display name must be ${MAX_DISPLAY_NAME_LENGTH} characters or shorter.`)
+      }
+
+      try {
+        if (trimmedName) {
+          localStorage.setItem(`${DISPLAY_NAME_KEY_PREFIX}${user.username}`, trimmedName)
+          setUser({ ...user, displayName: trimmedName })
+          return
+        }
+
+        localStorage.removeItem(`${DISPLAY_NAME_KEY_PREFIX}${user.username}`)
+      } catch {
+        throw new Error('Your browser could not store this display name.')
+      }
+
+      await refresh()
+    },
+    [refresh, user]
+  )
+
   const uploadProfilePicture = useCallback(
     async (file: File) => {
       if (!user) {
@@ -156,6 +196,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       browseAsGuest,
       logout,
       refresh,
+      updateDisplayName,
       uploadProfilePicture,
     }),
     [
@@ -168,6 +209,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       browseAsGuest,
       logout,
       refresh,
+      updateDisplayName,
       uploadProfilePicture,
     ]
   )

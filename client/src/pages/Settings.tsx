@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '../components/common/Button'
+import { Input } from '../components/common/Input'
 import TitlePreferenceToggle from '../components/common/TitlePreferenceToggle'
 import styles from './Settings.module.css'
 import GitHubSyncSettings from '../components/settings/GitHubSyncSettings'
@@ -14,6 +15,7 @@ import {
   FaDatabase,
   FaList,
   FaSignOutAlt,
+  FaSave,
   FaUpload,
   FaUserCircle,
 } from 'react-icons/fa'
@@ -28,7 +30,8 @@ type SettingsTab = 'general' | 'sync' | 'watchlist' | 'database'
 const Settings: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
-  const { user, logout, maxProfilePictureBytes, uploadProfilePicture } = useAuth()
+  const { user, logout, maxProfilePictureBytes, updateDisplayName, uploadProfilePicture } =
+    useAuth()
   const initialTab = searchParams.get('tab') as SettingsTab | null
   const [activeTab, setActiveTab] = useState<SettingsTab>(
     initialTab && ['general', 'sync', 'watchlist', 'database'].includes(initialTab)
@@ -38,6 +41,7 @@ const Settings: React.FC = () => {
   const [statusMessage, setStatusMessage] = useState('')
   const [profileStatus, setProfileStatus] = useState('')
   const [profileImageFailed, setProfileImageFailed] = useState(false)
+  const [displayName, setDisplayName] = useState(user?.displayName || '')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const profileInputRef = useRef<HTMLInputElement>(null)
   const { lowEndMode, setLowEndMode } = useLowEndMode()
@@ -67,6 +71,10 @@ const Settings: React.FC = () => {
   React.useEffect(() => {
     setProfileImageFailed(false)
   }, [user?.profilePictureUrl])
+
+  React.useEffect(() => {
+    setDisplayName(user?.displayName || user?.username || '')
+  }, [user?.displayName, user?.username])
 
   React.useEffect(() => {
     const tab = searchParams.get('tab') as SettingsTab | null
@@ -166,6 +174,21 @@ const Settings: React.FC = () => {
     }
   }
 
+  const handleDisplayNameSave = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setProfileStatus('Saving display name in this browser...')
+    try {
+      await updateDisplayName(displayName)
+      setProfileStatus(
+        displayName.trim()
+          ? 'Display name saved in this browser.'
+          : 'Browser display name reset to your account name.'
+      )
+    } catch (error) {
+      setProfileStatus(error instanceof Error ? error.message : 'Display name change failed.')
+    }
+  }
+
   const handleLogout = async () => {
     await logout()
     navigate('/login', { replace: true })
@@ -174,25 +197,6 @@ const Settings: React.FC = () => {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'general':
-        if (isGuest) {
-          return (
-            <div className={styles.tabContent}>
-              <div className={styles.sectionCard}>
-                <h3>Website Language</h3>
-                <p>Choose how anime titles are shown while browsing as a guest.</p>
-                <div className={styles.settingItem}>
-                  <TitlePreferenceToggle title="Website Language" />
-                </div>
-                <div className={styles.guestActions}>
-                  <Button variant="secondary" onClick={handleLogout}>
-                    <FaSignOutAlt /> Sign out
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )
-        }
-
         return (
           <div className={styles.tabContent}>
             <div className={styles.sectionCard}>
@@ -212,7 +216,7 @@ const Settings: React.FC = () => {
                 </div>
                 <div className={styles.profileDetails}>
                   <h4>{user?.displayName || user?.username}</h4>
-                  <span>{isAdmin ? 'Admin' : 'User'}</span>
+                  <span>{isAdmin ? 'Admin' : isGuest ? 'Guest' : 'User'}</span>
                 </div>
                 <div className={styles.profileActions}>
                   <Button onClick={triggerProfileFileSelect}>
@@ -223,6 +227,19 @@ const Settings: React.FC = () => {
                   </Button>
                 </div>
               </div>
+              <form className={styles.profileEditor} onSubmit={handleDisplayNameSave}>
+                <Input
+                  id="profile-display-name"
+                  label="Display name"
+                  value={displayName}
+                  maxLength={40}
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  placeholder={user?.username || 'Display name'}
+                />
+                <Button type="submit" variant="secondary">
+                  <FaSave /> Save name
+                </Button>
+              </form>
               <input
                 type="file"
                 ref={profileInputRef}

@@ -26,9 +26,24 @@ const ensureHttpProtocol = (url: string): string => {
   return `https://${url}`
 }
 
+const TWO_EMBED_SEASON_KEY_PREFIX = 'ani-web:2embed-season:'
+
+const readTwoEmbedSeasonOverride = (showId: string | undefined): number | undefined => {
+  if (!showId) return undefined
+  const season = Number(localStorage.getItem(`${TWO_EMBED_SEASON_KEY_PREFIX}${showId}`))
+  return Number.isInteger(season) && season >= 1 && season <= 99 ? season : undefined
+}
+
 const Player: React.FC = () => {
   const { id: showId, episodeNumber } = useParams<{ id: string; episodeNumber?: string }>()
   const navigate = useNavigate()
+  const [twoEmbedSeasonOverride, setTwoEmbedSeasonOverride] = useState<number | undefined>(() =>
+    readTwoEmbedSeasonOverride(showId)
+  )
+
+  useEffect(() => {
+    setTwoEmbedSeasonOverride(readTwoEmbedSeasonOverride(showId))
+  }, [showId])
 
   const {
     state,
@@ -41,7 +56,29 @@ const Player: React.FC = () => {
     markEpisodeWatched,
     isMarkingWatched,
     isUpdatingWatchlistStatus,
-  } = usePlayerData(showId, episodeNumber)
+  } = usePlayerData(showId, episodeNumber, twoEmbedSeasonOverride)
+
+  const handleTwoEmbedSeasonChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    if (!showId) return
+    const key = `${TWO_EMBED_SEASON_KEY_PREFIX}${showId}`
+    if (event.target.value === 'auto') {
+      localStorage.removeItem(key)
+      setTwoEmbedSeasonOverride(undefined)
+    } else {
+      const season = Number(event.target.value)
+      localStorage.setItem(key, String(season))
+      setTwoEmbedSeasonOverride(season)
+    }
+    dispatch({
+      type: 'SET_STATE',
+      payload: {
+        videoSources: [],
+        selectedSource: null,
+        selectedLink: null,
+        loadingVideo: true,
+      },
+    })
+  }
 
   const memoizedShowMeta = useMemo(() => {
     if (!state.showMeta.name) return undefined
@@ -839,6 +876,28 @@ const Player: React.FC = () => {
             localStorage.setItem('preferredProvider', newProvider)
           }}
         />
+
+        {state.selectedProvider === '2embed' && (
+          <div className={styles.providerSelectContainer}>
+            <h4>Season Match</h4>
+            <select
+              aria-label="2Embed season match"
+              className={styles.providerSelect}
+              value={twoEmbedSeasonOverride ? String(twoEmbedSeasonOverride) : 'auto'}
+              onChange={handleTwoEmbedSeasonChange}
+            >
+              <option value="auto">Auto detect</option>
+              {Array.from({ length: 20 }, (_, index) => {
+                const season = String(index + 1)
+                return (
+                  <option key={season} value={season}>
+                    Season {season}
+                  </option>
+                )
+              })}
+            </select>
+          </div>
+        )}
 
         {isVideoLoading ? (
           <div className={styles.sourceLoader}>

@@ -174,10 +174,16 @@
   justify-content: flex-end;
 }
 
-.guestActions {
+.profileEditor {
   display: flex;
-  justify-content: flex-end;
+  align-items: flex-end;
+  gap: var(--space-3);
   margin-top: var(--space-6);
+}
+
+.profileEditor :global(.field) {
+  flex: 1;
+  min-width: 200px;
 }
 
 .controls {
@@ -259,7 +265,8 @@
     justify-content: flex-start;
   }
 
-  .guestActions {
-    justify-content: flex-start;
+  .profileEditor {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

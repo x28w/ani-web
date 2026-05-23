@@ -493,7 +493,7 @@ export class AllAnimeProvider implements Provider {
     const response = await axios.post(
       API_ENDPOINT,
       {
-        query: `query($showId: String!) { show(_id: $showId) { _id, name, thumbnail, nativeName, englishName, type, availableEpisodesDetail, score, isAdult } }`,
+        query: `query($showId: String!) { show(_id: $showId) { _id, name, thumbnail, banner, description, nativeName, englishName, type, availableEpisodesDetail, score, isAdult } }`,
         variables: { showId },
       },
       {
@@ -511,6 +511,8 @@ export class AllAnimeProvider implements Provider {
         _id: show._id,
         name: show.name,
         thumbnail: this.deobfuscateUrl(show.thumbnail),
+        bannerImage: show.banner ? this.deobfuscateUrl(show.banner) : undefined,
+        description: show.description,
         nativeName: show.nativeName,
         englishName: show.englishName,
         type: show.type,

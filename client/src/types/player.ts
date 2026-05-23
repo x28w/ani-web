@@ -105,7 +105,7 @@ export interface PlayerState {
   resumeTime: number
   resumeDuration: number
   skipIntervals: SkipInterval[]
-  selectedProvider: 'allanime' | 'animepahe' | '123anime' | 'animeya'
+  selectedProvider: 'allanime' | 'animepahe' | '123anime' | 'animeya' | '2embed'
   loadingShowData: boolean
   loadingVideo: boolean
   loadingDetails: boolean

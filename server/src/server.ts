@@ -15,6 +15,7 @@ import { AllAnimeProvider } from './providers/allanime.provider'
 import { AnimePaheProvider } from './providers/animepahe.provider'
 import { _123AnimeProvider as Anime123Provider } from './providers/123anime.provider'
 import { AnimeyaProvider } from './providers/animeya.provider'
+import { TwoEmbedProvider } from './providers/2embed.provider'
 import { googleDriveService } from './google'
 import { CONFIG } from './config'
 import { initializeDatabase, syncDownOnBoot, syncUp, initSyncProvider, waitForSync } from './sync'
@@ -39,12 +40,14 @@ const allAnimeProvider = new AllAnimeProvider(apiCache)
 const animePaheProvider = new AnimePaheProvider(apiCache)
 const _123AnimeProvider = new Anime123Provider(apiCache)
 const animeyaProvider = new AnimeyaProvider(apiCache)
+const twoEmbedProvider = new TwoEmbedProvider(apiCache)
 
 const providers = {
   allanime: allAnimeProvider,
   animepahe: animePaheProvider,
   '123anime': _123AnimeProvider,
   animeya: animeyaProvider,
+  '2embed': twoEmbedProvider,
 }
 
 let db: DatabaseWrapper

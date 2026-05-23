@@ -22,7 +22,24 @@
   object-fit: cover;
   transform: scale(1.03);
   filter: saturate(1.05);
+  z-index: -3;
+}
+
+.posterBackdrop {
+  transform: scale(1.1);
+  filter: blur(14px) saturate(1.1) brightness(0.72);
+}
+
+.posterFeature {
+  position: absolute;
   z-index: -2;
+  right: clamp(2.25rem, 8vw, 6.5rem);
+  top: 1.5rem;
+  height: calc(100% - 3rem);
+  width: min(29%, 255px);
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.42);
 }
 
 .overlay {
@@ -189,6 +206,11 @@
   .content h1 {
     max-width: 14ch;
   }
+
+  .posterFeature {
+    right: var(--space-7);
+    width: min(30%, 210px);
+  }
 }
 
 @media (max-width: 620px) {
@@ -207,6 +229,15 @@
         rgba(8, 10, 14, 0.34) 100%
       ),
       linear-gradient(90deg, rgba(8, 10, 14, 0.72), rgba(8, 10, 14, 0.28));
+  }
+
+  .posterBackdrop {
+    filter: saturate(1.02) brightness(0.68);
+    transform: scale(1.03);
+  }
+
+  .posterFeature {
+    display: none;
   }
 
   .content {

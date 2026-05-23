@@ -10,6 +10,7 @@ import AnimeHeroCarousel from '../components/anime/AnimeHeroCarousel'
 import SkeletonGrid from '../components/common/SkeletonGrid'
 import RemoveConfirmationModal from '../components/common/RemoveConfirmationModal'
 import {
+  type Anime,
   useLatestReleases,
   usePaginatedCurrentSeason,
   useContinueWatchingFast,
@@ -21,6 +22,35 @@ import { removeLocalContinueWatching } from '../lib/localProgress'
 import styles from './Home.module.css'
 
 type ActiveTab = 'latest' | 'season' | 'popular'
+const HERO_SELECTION_KEY = 'ani-web:hero-selection:v1'
+
+const getHeroSeed = () => {
+  const date = new Date().toISOString().slice(0, 10)
+
+  try {
+    const stored = JSON.parse(localStorage.getItem(HERO_SELECTION_KEY) || '{}')
+    if (stored.date === date && Number.isFinite(stored.seed)) return Number(stored.seed)
+
+    const seed = Math.floor(Math.random() * 2147483647)
+    localStorage.setItem(HERO_SELECTION_KEY, JSON.stringify({ date, seed }))
+    return seed
+  } catch {
+    return Number(date.replace(/-/g, ''))
+  }
+}
+
+const shuffleWithSeed = (items: Anime[], seed: number) => {
+  const shuffled = [...items]
+  let value = seed || 1
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    value = (value * 16807) % 2147483647
+    const target = value % (index + 1)
+    ;[shuffled[index], shuffled[target]] = [shuffled[target], shuffled[index]]
+  }
+
+  return shuffled
+}
 
 const Home: React.FC = () => {
   const queryClient = useQueryClient()
@@ -28,6 +58,7 @@ const Home: React.FC = () => {
   const [activeTab, setActiveTab] = useState(
     () => (localStorage.getItem('home_activeTab') as ActiveTab) || 'latest'
   )
+  const [heroSeed] = useState(() => getHeroSeed())
   const seasonalRef = useRef<HTMLDivElement>(null)
 
   const { data: nextPageData } = usePaginatedCurrentSeason(page + 1)
@@ -73,10 +104,24 @@ const Home: React.FC = () => {
 
   const { data: currentSeason, isLoading: loadingSeason } = usePaginatedCurrentSeason(page)
   const seasonLimit = 14
+  const continueWatchingIds = useMemo(
+    () => new Set((cwList || []).map((anime) => String(anime.id || anime._id))),
+    [cwList]
+  )
   const featuredAnime = useMemo(() => {
-    const source = latest && latest.length > 0 ? latest : currentSeason || []
-    return source.slice(0, 6)
-  }, [currentSeason, latest])
+    const selected: Anime[] = []
+    const selectedIds = new Set<string>()
+    const addUnique = (anime: Anime) => {
+      const id = String(anime.id || anime._id || '')
+      if (!id || selectedIds.has(id)) return
+      selected.push(anime)
+      selectedIds.add(id)
+    }
+
+    ;(cwList || []).slice(0, 2).forEach(addUnique)
+    shuffleWithSeed([...(latest || []), ...(currentSeason || [])], heroSeed).forEach(addUnique)
+    return selected.slice(0, 6)
+  }, [currentSeason, cwList, heroSeed, latest])
 
   const canGoNext =
     currentSeason && currentSeason.length >= 14 && nextPageData && nextPageData.length > 0
@@ -206,7 +251,11 @@ const Home: React.FC = () => {
 
   return (
     <div style={{ paddingBottom: '2rem' }}>
-      <AnimeHeroCarousel animeList={featuredAnime} loading={loadingLatest && loadingSeason} />
+      <AnimeHeroCarousel
+        animeList={featuredAnime}
+        loading={loadingLatest && loadingSeason}
+        continueWatchingIds={continueWatchingIds}
+      />
 
       {/* ── Continue Watching ── */}
       <AnimeSection

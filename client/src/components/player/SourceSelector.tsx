@@ -1,10 +1,11 @@
 import React from 'react'
 import styles from './Player.module.css'
 import type { VideoSource } from '../../pages/Player'
+import type { PlayerState } from '../../types/player'
 
 interface ProviderSelectorProps {
-  selectedProvider: 'allanime' | 'animepahe' | '123anime' | 'animeya'
-  onProviderChange: (provider: 'allanime' | 'animepahe' | '123anime' | 'animeya') => void
+  selectedProvider: PlayerState['selectedProvider']
+  onProviderChange: (provider: PlayerState['selectedProvider']) => void
 }
 
 export const ProviderSelector: React.FC<ProviderSelectorProps> = ({
@@ -17,14 +18,13 @@ export const ProviderSelector: React.FC<ProviderSelectorProps> = ({
       <select
         className={styles.providerSelect}
         value={selectedProvider}
-        onChange={(e) =>
-          onProviderChange(e.target.value as 'allanime' | 'animepahe' | '123anime' | 'animeya')
-        }
+        onChange={(e) => onProviderChange(e.target.value as PlayerState['selectedProvider'])}
       >
         <option value="allanime">AllAnime</option>
         <option value="animeya">Animeya</option>
         <option value="animepahe">AnimePahe</option>
         <option value="123anime">123Anime</option>
+        <option value="2embed">2Embed</option>
       </select>
     </div>
   )

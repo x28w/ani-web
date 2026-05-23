@@ -5,6 +5,7 @@ export interface Show {
   nativeName?: string
   englishName?: string
   thumbnail?: string
+  bannerImage?: string
   description?: string
   type?: string
   availableEpisodesDetail?: {
@@ -64,6 +65,7 @@ export interface SkipIntervals {
 
 export interface SearchOptions {
   query?: string
+  aliases?: string
   season?: string
   year?: string
   sortBy?: string

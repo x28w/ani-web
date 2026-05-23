@@ -9,6 +9,7 @@ export interface Anime {
   nativeName?: string
   englishName?: string
   thumbnail: string
+  bannerImage?: string
   description?: string
   type?: string
   status?: string
