@@ -5,11 +5,13 @@ import type { PlayerState } from '../../types/player'
 
 interface ProviderSelectorProps {
   selectedProvider: PlayerState['selectedProvider']
+  currentMode: PlayerState['currentMode']
   onProviderChange: (provider: PlayerState['selectedProvider']) => void
 }
 
 export const ProviderSelector: React.FC<ProviderSelectorProps> = ({
   selectedProvider,
+  currentMode,
   onProviderChange,
 }) => {
   return (
@@ -24,7 +26,9 @@ export const ProviderSelector: React.FC<ProviderSelectorProps> = ({
         <option value="animeya">Animeya</option>
         <option value="animepahe">AnimePahe</option>
         <option value="123anime">123Anime</option>
-        <option value="2embed">2Embed</option>
+        <option value="2embed" disabled={currentMode === 'dub'}>
+          2Embed (SUB only)
+        </option>
       </select>
     </div>
   )

@@ -11,8 +11,11 @@ const getPreferredMode = (): 'sub' | 'dub' => {
   return localStorage.getItem('preferredMode') === 'dub' ? 'dub' : 'sub'
 }
 
-const getPreferredProvider = (): PlayerState['selectedProvider'] => {
+const getPreferredProvider = (
+  mode: PlayerState['currentMode']
+): PlayerState['selectedProvider'] => {
   const provider = localStorage.getItem('preferredProvider')
+  if (mode === 'dub' && provider === '2embed') return 'allanime'
   return provider === 'animepahe' ||
     provider === '123anime' ||
     provider === 'animeya' ||
@@ -21,32 +24,35 @@ const getPreferredProvider = (): PlayerState['selectedProvider'] => {
     : 'allanime'
 }
 
-export const createInitialState = (): PlayerState => ({
-  showMeta: {},
-  episodes: [],
-  watchedEpisodes: [],
-  watchlistStatus: null,
-  currentEpisode: undefined,
-  allMangaDetails: null,
-  showCombinedDetails: false,
-  currentMode: getPreferredMode(),
-  inWatchlist: false,
-  videoSources: [],
-  selectedSource: null,
-  selectedLink: null,
-  forceNativePlayer: localStorage.getItem('forceNativePlayer') === 'true',
-  isAutoplayEnabled: localStorage.getItem('autoplayEnabled') === 'true',
-  showResumeModal: true,
-  resumeTime: 0,
-  resumeDuration: 0,
-  skipIntervals: [],
-  selectedProvider: getPreferredProvider(),
-  loadingShowData: true,
-  loadingVideo: false,
-  loadingDetails: false,
-  error: null,
-  detailsError: null,
-})
+export const createInitialState = (): PlayerState => {
+  const currentMode = getPreferredMode()
+  return {
+    showMeta: {},
+    episodes: [],
+    watchedEpisodes: [],
+    watchlistStatus: null,
+    currentEpisode: undefined,
+    allMangaDetails: null,
+    showCombinedDetails: false,
+    currentMode,
+    inWatchlist: false,
+    videoSources: [],
+    selectedSource: null,
+    selectedLink: null,
+    forceNativePlayer: localStorage.getItem('forceNativePlayer') === 'true',
+    isAutoplayEnabled: localStorage.getItem('autoplayEnabled') === 'true',
+    showResumeModal: true,
+    resumeTime: 0,
+    resumeDuration: 0,
+    skipIntervals: [],
+    selectedProvider: getPreferredProvider(currentMode),
+    loadingShowData: true,
+    loadingVideo: false,
+    loadingDetails: false,
+    error: null,
+    detailsError: null,
+  }
+}
 
 export const initialState: PlayerState = createInitialState()
 
@@ -60,6 +66,10 @@ export function playerReducer(state: PlayerState, action: Action): PlayerState {
       return {
         ...state,
         currentMode: action.payload,
+        selectedProvider:
+          action.payload === 'dub' && state.selectedProvider === '2embed'
+            ? 'allanime'
+            : state.selectedProvider,
         videoSources: [],
         selectedSource: null,
         selectedLink: null,
