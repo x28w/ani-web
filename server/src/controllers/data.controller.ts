@@ -91,12 +91,14 @@ export class DataController {
   })
 
   getShowDetails = asyncHandler(async (req: Request, res: Response) => {
-    const details = await this.getProvider(req).getShowDetails(req.params.id as string)
-    if (!details) {
-      res.status(404).send('Not found')
-      return
+    try {
+      const details = await this.getProvider(req).getShowDetails(req.params.id as string)
+      res.json(details || {})
+    } catch (e) {
+      const error = e as Error
+      logger.warn({ err: error.message }, 'Optional show details fetch failed')
+      res.json({})
     }
-    res.json(details)
   })
 
   getAllmangaDetails = asyncHandler(async (req: Request, res: Response) => {

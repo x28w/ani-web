@@ -62,6 +62,9 @@ export class ProxyController {
         })
 
         const baseUrl = new URL(urlStr)
+        const proxiedMediaUrl = (targetUrl: string) =>
+          `/api/proxy?url=${encodeURIComponent(targetUrl)}&referer=${encodeURIComponent(refererStr)}`
+        const requiresProxyHeaders = Boolean(refererStr)
         const rewritten = resp.data
           .split('\n')
           .map((l: string) => {
@@ -69,18 +72,18 @@ export class ProxyController {
             if (!line) return l
 
             if (line.startsWith('#')) {
-              return line.replace(/URI="([^"]+)"/g, (match, uri) => {
+              return line.replace(/URI="([^"]+)"/g, (_match, uri) => {
                 const fullUri = new URL(uri, baseUrl).href
-                if (fullUri.includes('.m3u8')) {
-                  return `URI="/api/proxy?url=${encodeURIComponent(fullUri)}&referer=${encodeURIComponent(refererStr)}"`
+                if (requiresProxyHeaders || fullUri.includes('.m3u8')) {
+                  return `URI="${proxiedMediaUrl(fullUri)}"`
                 }
                 return `URI="${fullUri}"`
               })
             }
 
             const fullUrl = new URL(line, baseUrl).href
-            if (fullUrl.includes('.m3u8')) {
-              return `/api/proxy?url=${encodeURIComponent(fullUrl)}&referer=${encodeURIComponent(refererStr)}`
+            if (requiresProxyHeaders || fullUrl.includes('.m3u8')) {
+              return proxiedMediaUrl(fullUrl)
             }
             return fullUrl
           })
