@@ -37,6 +37,7 @@ const Player: React.FC = () => {
     moveToCompleted,
     setPreferredSource,
     handleToggleDetails,
+    recordEpisodeProgress,
     markEpisodeWatched,
     isMarkingWatched,
     isUpdatingWatchlistStatus,
@@ -50,6 +51,10 @@ const Player: React.FC = () => {
       names: state.showMeta.names,
       genres: state.showMeta.genres,
       score: state.showMeta.score,
+      type: state.showMeta.type,
+      status: state.showMeta.status,
+      episodeCount: state.episodes.length || state.showMeta.episodes,
+      lengthMin: state.showMeta.lengthMin,
     }
   }, [
     state.showMeta.name,
@@ -57,6 +62,11 @@ const Player: React.FC = () => {
     state.showMeta.names,
     state.showMeta.genres,
     state.showMeta.score,
+    state.showMeta.type,
+    state.showMeta.status,
+    state.showMeta.episodes,
+    state.showMeta.lengthMin,
+    state.episodes.length,
   ])
 
   const player = useVideoPlayer({
@@ -73,11 +83,51 @@ const Player: React.FC = () => {
   const seekToTimeRef = useRef<number>(0)
   const resumeTimeRef = useRef(state.resumeTime)
   const showResumeModalRef = useRef(state.showResumeModal)
+  const recordedStartRef = useRef<string | null>(null)
 
   useEffect(() => {
     resumeTimeRef.current = state.resumeTime
     showResumeModalRef.current = state.showResumeModal
   }, [state.resumeTime, state.showResumeModal])
+
+  useEffect(() => {
+    if (
+      !showId ||
+      !state.currentEpisode ||
+      !state.selectedSource ||
+      state.loadingShowData ||
+      state.loadingVideo ||
+      !state.showMeta.name
+    ) {
+      return
+    }
+
+    const selectedLinkKey = state.selectedLink?.link || state.selectedSource.sourceName
+    const recordKey = `${showId}:${state.currentEpisode}:${state.selectedProvider}:${selectedLinkKey}`
+    if (recordedStartRef.current === recordKey) return
+    recordedStartRef.current = recordKey
+
+    const fallbackDuration = Math.max(
+      state.resumeDuration || 0,
+      (state.showMeta.lengthMin || 0) * 60,
+      1
+    )
+    const startTime = Math.max(state.resumeTime || 1, 1)
+    recordEpisodeProgress(state.currentEpisode, startTime, fallbackDuration)
+  }, [
+    showId,
+    state.currentEpisode,
+    state.selectedSource,
+    state.selectedLink,
+    state.selectedProvider,
+    state.loadingShowData,
+    state.loadingVideo,
+    state.showMeta.name,
+    state.showMeta.lengthMin,
+    state.resumeTime,
+    state.resumeDuration,
+    recordEpisodeProgress,
+  ])
 
   const [skipIndicator, setSkipIndicator] = useState<{
     side: 'left' | 'right'

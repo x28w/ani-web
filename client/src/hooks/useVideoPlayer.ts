@@ -14,6 +14,9 @@ interface VideoPlayerProps {
     genres?: { name: string }[]
     score?: number
     type?: string
+    status?: string
+    episodeCount?: number
+    lengthMin?: number
   }
 }
 
@@ -71,20 +74,27 @@ const useVideoPlayer = ({ skipIntervals, showId, episodeNumber, showMeta }: Vide
 
   const buildProgressPayload = useCallback(() => {
     const video = videoRef.current
-    if (!video || !showId || !episodeNumber || !showMeta?.name) return null
+    if (!video || !showId || !episodeNumber) return null
+
+    const duration =
+      Number.isFinite(video.duration) && video.duration > 0
+        ? video.duration
+        : Math.max((showMeta?.lengthMin || 0) * 60, 1)
 
     return {
       showId,
       episodeNumber,
       currentTime: video.currentTime,
-      duration: video.duration,
-      showName: showMeta.name,
-      showThumbnail: showMeta.thumbnail,
-      nativeName: showMeta.names?.native,
-      englishName: showMeta.names?.english,
-      genres: showMeta.genres?.map((g) => g.name),
-      popularityScore: showMeta.score,
-      type: showMeta.type,
+      duration,
+      showName: showMeta?.name || showMeta?.names?.english || showMeta?.names?.native || showId,
+      showThumbnail: showMeta?.thumbnail,
+      nativeName: showMeta?.names?.native,
+      englishName: showMeta?.names?.english,
+      genres: showMeta?.genres?.map((g) => g.name),
+      popularityScore: showMeta?.score,
+      type: showMeta?.type,
+      status: showMeta?.status,
+      episodeCount: showMeta?.episodeCount,
     }
   }, [showId, episodeNumber, showMeta])
 
