@@ -6,6 +6,8 @@
 # Build output
 /client/dist
 /server/dist
+/runtime-data
+*.out
 
 # Databases
 *.db

@@ -156,11 +156,11 @@ const Settings: React.FC = () => {
       return
     }
 
-    setProfileStatus('Uploading profile picture...')
+    setProfileStatus('Saving profile picture in this browser...')
     try {
       await uploadProfilePicture(file)
       setProfileImageFailed(false)
-      setProfileStatus('Profile picture updated.')
+      setProfileStatus('Profile picture saved in this browser.')
     } catch (error) {
       setProfileStatus(error instanceof Error ? error.message : 'Profile picture upload failed.')
     }
@@ -197,7 +197,7 @@ const Settings: React.FC = () => {
           <div className={styles.tabContent}>
             <div className={styles.sectionCard}>
               <h3>Profile</h3>
-              <p>Customize the profile shown in the header for this login.</p>
+              <p>Customize the profile shown in the header on this browser.</p>
               <div className={styles.profileRow}>
                 <div className={styles.profileAvatar}>
                   {user?.profilePictureUrl && !profileImageFailed ? (
@@ -216,7 +216,7 @@ const Settings: React.FC = () => {
                 </div>
                 <div className={styles.profileActions}>
                   <Button onClick={triggerProfileFileSelect}>
-                    <FaUpload /> Upload picture
+                    <FaUpload /> Save browser picture
                   </Button>
                   <Button variant="secondary" onClick={handleLogout}>
                     <FaSignOutAlt /> Sign out

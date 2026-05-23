@@ -279,7 +279,11 @@ export class WatchlistController {
     if (watchingShows.length === 0) return []
 
     const showIds = watchingShows.map((s) => s.id)
-    const allWatchedEps = await WatchedEpisodesRepository.getEpisodesForShows(req.db, userId, showIds)
+    const allWatchedEps = await WatchedEpisodesRepository.getEpisodesForShows(
+      req.db,
+      userId,
+      showIds
+    )
 
     const watchedByShow = new Map<string, WatchedEpisode[]>()
     for (const ep of allWatchedEps) {
@@ -389,9 +393,9 @@ export class WatchlistController {
       episodeCount,
     } = req.body
 
-    const inWatchlist = await WatchlistRepository.exists(req.db, showId)
-    if (!inWatchlist) {
-      return res.json({ success: true })
+    if (!showId || !episodeNumber) {
+      res.status(400).json({ error: 'showId and episodeNumber are required' })
+      return
     }
 
     const genresStr = Array.isArray(genres) ? JSON.stringify(genres) : genres

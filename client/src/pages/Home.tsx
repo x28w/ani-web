@@ -6,6 +6,7 @@ import AnimeSection from '../components/anime/AnimeSection'
 import Top10List from '../components/anime/Top10List'
 import Schedule from '../components/anime/Schedule'
 import AnimeCard from '../components/anime/AnimeCard'
+import AnimeHeroCarousel from '../components/anime/AnimeHeroCarousel'
 import SkeletonGrid from '../components/common/SkeletonGrid'
 import RemoveConfirmationModal from '../components/common/RemoveConfirmationModal'
 import {
@@ -16,7 +17,7 @@ import {
   useRemoveFromWatchlist,
 } from '../hooks/useAnimeData'
 import { useTitlePreference } from '../contexts/TitlePreferenceContext'
-import { useLowEndMode } from '../contexts/LowEndModeContext'
+import { removeLocalContinueWatching } from '../lib/localProgress'
 import styles from './Home.module.css'
 
 type ActiveTab = 'latest' | 'season' | 'popular'
@@ -32,7 +33,6 @@ const Home: React.FC = () => {
   const { data: nextPageData } = usePaginatedCurrentSeason(page + 1)
 
   const { titlePreference } = useTitlePreference()
-  const { lowEndMode } = useLowEndMode()
   const [itemToRemove, setItemToRemove] = React.useState<{ id: string; name: string } | null>(null)
   const removeWatchlistMutation = useRemoveFromWatchlist()
 
@@ -46,8 +46,7 @@ const Home: React.FC = () => {
 
   const { data: latest, isLoading: loadingLatest } = useLatestReleases()
   const { data: cwFast, isLoading: loadingFast } = useContinueWatchingFast(14)
-  const { data: cwUpNext, isLoading: loadingUpNext } = useContinueWatchingUpNext()
-  const loadingCw = loadingFast || loadingUpNext
+  const { data: cwUpNext } = useContinueWatchingUpNext()
 
   const cwList = useMemo(() => {
     const combined: typeof cwFast = []
@@ -74,12 +73,17 @@ const Home: React.FC = () => {
 
   const { data: currentSeason, isLoading: loadingSeason } = usePaginatedCurrentSeason(page)
   const seasonLimit = 14
+  const featuredAnime = useMemo(() => {
+    const source = latest && latest.length > 0 ? latest : currentSeason || []
+    return source.slice(0, 6)
+  }, [currentSeason, latest])
 
   const canGoNext =
     currentSeason && currentSeason.length >= 14 && nextPageData && nextPageData.length > 0
 
   const removeCw = useMutation({
     mutationFn: async (showId: string) => {
+      removeLocalContinueWatching(showId)
       await fetch('/api/continue-watching/remove', {
         method: 'POST',
         body: JSON.stringify({ showId }),
@@ -202,6 +206,8 @@ const Home: React.FC = () => {
 
   return (
     <div style={{ paddingBottom: '2rem' }}>
+      <AnimeHeroCarousel animeList={featuredAnime} loading={loadingLatest && loadingSeason} />
+
       {/* ── Continue Watching ── */}
       <AnimeSection
         title="Continue Watching"

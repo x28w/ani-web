@@ -29,6 +29,7 @@ interface StatusResponse {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 const DEFAULT_MAX_PROFILE_PICTURE_BYTES = 1024 * 1024
+const PROFILE_PICTURE_KEY_PREFIX = 'ani-web:profile-picture:'
 
 async function parseError(response: Response): Promise<string> {
   try {
@@ -37,6 +38,29 @@ async function parseError(response: Response): Promise<string> {
   } catch {
     return 'Request failed.'
   }
+}
+
+function getStoredProfilePicture(username: string): string | undefined {
+  try {
+    return localStorage.getItem(`${PROFILE_PICTURE_KEY_PREFIX}${username}`) || undefined
+  } catch {
+    return undefined
+  }
+}
+
+function withStoredProfilePicture(user: SiteUser | null): SiteUser | null {
+  if (!user) return null
+  const profilePictureUrl = getStoredProfilePicture(user.username) || user.profilePictureUrl
+  return profilePictureUrl ? { ...user, profilePictureUrl } : user
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(new Error('Unable to read the selected image.'))
+    reader.readAsDataURL(file)
+  })
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -51,7 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const applyStatus = useCallback((status: StatusResponse) => {
     setAuthenticated(status.authenticated)
     setEnabled(status.enabled)
-    setUser(status.user)
+    setUser(withStoredProfilePicture(status.user))
     setMaxProfilePictureBytes(status.maxProfilePictureBytes || DEFAULT_MAX_PROFILE_PICTURE_BYTES)
   }, [])
 
@@ -105,21 +129,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const uploadProfilePicture = useCallback(
     async (file: File) => {
-      const formData = new FormData()
-      formData.append('avatar', file)
-
-      const response = await fetch('/api/site-auth/profile-picture', {
-        method: 'POST',
-        body: formData,
-      })
-
-      if (!response.ok) {
-        throw new Error(await parseError(response))
+      if (!user) {
+        throw new Error('Sign in before setting a profile picture.')
       }
 
-      await refresh()
+      const dataUrl = await readFileAsDataUrl(file)
+      try {
+        localStorage.setItem(`${PROFILE_PICTURE_KEY_PREFIX}${user.username}`, dataUrl)
+      } catch {
+        throw new Error('Your browser could not store this image. Try a smaller picture.')
+      }
+
+      setUser({ ...user, profilePictureUrl: dataUrl })
     },
-    [refresh]
+    [user]
   )
 
   const value = useMemo(

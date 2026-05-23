@@ -9,6 +9,12 @@ import type {
   PlayerState,
 } from '../types/player'
 import { playerReducer, createInitialState, type Action } from '../reducers/playerReducer'
+import {
+  getLocalEpisodeProgress,
+  getLocalWatchedEpisodeNumbers,
+  saveLocalProgress,
+  type ProgressPayload,
+} from '../lib/localProgress'
 
 interface UsePlayerDataReturn {
   state: PlayerState
@@ -31,6 +37,13 @@ interface RawSkipInterval {
   }
   start_time?: number
   end_time?: number
+}
+
+type ProgressShowMeta = Partial<DetailedShowMeta> & {
+  name?: string
+  thumbnail?: string
+  type?: string
+  score?: number
 }
 
 const fetchApi = async (url: string) => {
@@ -75,6 +88,8 @@ export const usePlayerData = (
         ? episodeData.episodes.sort((a: string, b: string) => parseFloat(a) - parseFloat(b))
         : []
 
+      const localWatchedEpisodes = getLocalWatchedEpisodeNumbers(showId)
+
       return {
         showMeta: {
           ...meta,
@@ -88,7 +103,7 @@ export const usePlayerData = (
         episodes,
         inWatchlist: watchlistStatus.inWatchlist,
         watchlistStatus: watchlistStatus.status ?? null,
-        watchedEpisodes,
+        watchedEpisodes: Array.from(new Set([...watchedEpisodes, ...localWatchedEpisodes])),
       }
     },
     enabled: !!showId,
@@ -199,7 +214,7 @@ export const usePlayerData = (
         }
       }
 
-      const [sources, progress, preferredSourceData, skipTimesData] = await Promise.all([
+      const [sources, serverProgress, preferredSourceData, skipTimesData] = await Promise.all([
         fetchApi(
           `/api/video?showId=${providerShowId}&episodeNumber=${uiState.currentEpisode}&mode=${uiState.currentMode}&provider=${uiState.selectedProvider}`
         ),
@@ -239,6 +254,11 @@ export const usePlayerData = (
             )[0]
           : null
 
+      const localProgress = getLocalEpisodeProgress(showId, uiState.currentEpisode)
+      const progress =
+        localProgress && localProgress.currentTime > (serverProgress?.currentTime || 0)
+          ? localProgress
+          : serverProgress
       const resumeTime = progress?.currentTime || 0
       const resumeDuration = progress?.duration || 0
       const rawSkips = Array.isArray(skipTimesData) ? skipTimesData : skipTimesData.results || []
@@ -362,29 +382,37 @@ export const usePlayerData = (
     }: {
       episodeNumber: string
       duration: number
-      showMeta: DetailedShowMeta
+      showMeta: ProgressShowMeta
       episodes: string[]
     }) => {
-      await fetch('/api/update-progress', {
+      const payload: ProgressPayload = {
+        showId,
+        episodeNumber,
+        currentTime: duration,
+        duration,
+        showName: showMeta.name || showMeta.names?.romaji || showMeta.title,
+        showThumbnail: showMeta.thumbnail,
+        nativeName: showMeta.names?.native,
+        englishName: showMeta.names?.english,
+        genres: showMeta.genres?.map((genre) => genre.name),
+        popularityScore: showMeta.score ?? showMeta.stats?.averageScore,
+        type: showMeta.type,
+        status: showMeta.status,
+        episodeCount: episodes.length,
+      }
+
+      saveLocalProgress(payload)
+
+      const response = await fetch('/api/update-progress', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          showId,
-          episodeNumber,
-          currentTime: duration,
-          duration: duration,
-          showName: showMeta.name,
-          showThumbnail: showMeta.thumbnail,
-          nativeName: showMeta.names?.native,
-          englishName: showMeta.names?.english,
-          genres: showMeta.genres?.map((genre) => genre.name),
-          popularityScore: showMeta.score ?? showMeta.stats?.averageScore,
-          type: showMeta.type,
-          status: showMeta.status,
-          episodeCount: episodes.length,
-        }),
+        body: JSON.stringify(payload),
         keepalive: true,
-      })
+      }).catch(() => null)
+
+      if (response && !response.ok) {
+        console.warn('Progress was saved locally but the server did not accept the update.')
+      }
     },
     onSuccess: (data, variables) => {
       toast.success(`Episode ${variables.episodeNumber} marked as watched`)

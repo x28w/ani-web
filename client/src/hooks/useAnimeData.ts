@@ -1,5 +1,6 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
+import { mergeLocalContinueWatching, removeLocalContinueWatching } from '../lib/localProgress'
 
 export interface Anime {
   _id: string
@@ -8,9 +9,10 @@ export interface Anime {
   nativeName?: string
   englishName?: string
   thumbnail: string
+  description?: string
   type?: string
   status?: string
-  episodeNumber?: number
+  episodeNumber?: number | string
   currentTime?: number
   duration?: number
   watchedCount?: number
@@ -22,6 +24,8 @@ export interface Anime {
   episodeCount?: number
   isAdult?: boolean
   rating?: string
+  genres?: { name: string }[] | string[]
+  score?: number
 }
 
 const fetchApi = async (url: string) => {
@@ -78,7 +82,10 @@ export const useContinueWatchingFast = (limit?: number) => {
   const url = limit ? `/api/continue-watching/fast?limit=${limit}` : '/api/continue-watching/fast'
   return useQuery<Anime[]>({
     queryKey: ['continueWatchingFast', { limit }],
-    queryFn: () => fetchApi(url),
+    queryFn: async () => {
+      const remote = await fetchApi(url).catch(() => [])
+      return mergeLocalContinueWatching(remote, limit) as Anime[]
+    },
   })
 }
 
@@ -86,7 +93,10 @@ export const useContinueWatchingUpNext = () => {
   const url = '/api/continue-watching/up-next'
   return useQuery<Anime[]>({
     queryKey: ['continueWatchingUpNext'],
-    queryFn: () => fetchApi(url),
+    queryFn: async () => {
+      const remote = await fetchApi(url).catch(() => [])
+      return mergeLocalContinueWatching(remote) as Anime[]
+    },
   })
 }
 
@@ -94,7 +104,10 @@ export const useContinueWatching = (limit?: number) => {
   const url = limit ? `/api/continue-watching?limit=${limit}` : '/api/continue-watching'
   return useQuery<Anime[]>({
     queryKey: ['continueWatching', { limit }],
-    queryFn: () => fetchApi(url),
+    queryFn: async () => {
+      const remote = await fetchApi(url).catch(() => [])
+      return mergeLocalContinueWatching(remote, limit) as Anime[]
+    },
   })
 }
 
@@ -158,8 +171,15 @@ export const useAllContinueWatching = (filters: string = '') => {
         const params = new URLSearchParams(filters)
         params.set('page', String(pageParam))
         params.set('limit', '14')
-        const response = await fetchApi(`/api/continue-watching/all?${params.toString()}`)
-        return response
+        const response = await fetchApi(`/api/continue-watching/all?${params.toString()}`).catch(
+          () => ({ data: [], total: 0, page: Number(pageParam), limit: 14 })
+        )
+        const merged = mergeLocalContinueWatching(response.data) as Anime[]
+        return {
+          ...response,
+          data: merged.slice(0, 14),
+          total: Math.max(response.total || 0, merged.length),
+        }
       },
       initialPageParam: 1,
       getNextPageParam: (lastPage) => {
@@ -187,7 +207,16 @@ export const usePaginatedAllContinueWatching = (
       const params = new URLSearchParams(filters)
       params.set('page', String(page))
       params.set('limit', String(limit))
-      return fetchApi(`/api/continue-watching/all?${params.toString()}`)
+      const response = await fetchApi(`/api/continue-watching/all?${params.toString()}`).catch(
+        () => ({ data: [], total: 0, page, limit })
+      )
+      const merged = mergeLocalContinueWatching(response.data) as Anime[]
+      const offset = (page - 1) * limit
+      return {
+        ...response,
+        data: merged.slice(offset, offset + limit),
+        total: Math.max(response.total || 0, merged.length),
+      }
     },
   })
 }
@@ -196,6 +225,7 @@ export const useRemoveFromWatchlist = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (showId: string) => {
+      removeLocalContinueWatching(showId)
       const response = await fetch(`/api/watchlist/remove`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { SkipInterval, SubtitleTrack } from '../types/player'
+import { saveLocalProgress } from '../lib/localProgress'
 
 interface VideoPlayerProps {
   skipIntervals: SkipInterval[]
@@ -121,6 +122,8 @@ const useVideoPlayer = ({ skipIntervals, showId, episodeNumber, showMeta }: Vide
 
       payload.currentTime = timeToReport
       lastReportedTime.current = timeToReport
+      saveLocalProgress(payload)
+      refreshProgressQueries()
 
       fetch('/api/update-progress', {
         method: 'POST',
@@ -339,6 +342,8 @@ const useVideoPlayer = ({ skipIntervals, showId, episodeNumber, showMeta }: Vide
     if (!payload) return
 
     payload.currentTime = payload.duration
+    saveLocalProgress(payload)
+    refreshProgressQueries()
 
     fetch('/api/update-progress', {
       method: 'POST',
