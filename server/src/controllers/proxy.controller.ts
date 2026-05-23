@@ -25,6 +25,14 @@ export const axiosInstance = axios.create({
 axiosRetry(axiosInstance, { retries: 3, retryDelay: axiosRetry.exponentialDelay })
 
 export class ProxyController {
+  private abortWhenClientLeaves(res: Response, abortController: AbortController) {
+    res.on('close', () => {
+      if (!res.writableEnded) {
+        abortController.abort()
+      }
+    })
+  }
+
   handleProxy = async (req: Request, res: Response) => {
     const { url, referer } = req.query
     if (!url) return res.status(400).send('URL required')
@@ -34,9 +42,7 @@ export class ProxyController {
     const cacheKey = `m3u8-${urlStr}-${refererStr}`
 
     const abortController = new AbortController()
-    req.on('close', () => {
-      abortController.abort()
-    })
+    this.abortWhenClientLeaves(res, abortController)
 
     try {
       const headers: Record<string, string> = {
@@ -149,9 +155,7 @@ export class ProxyController {
     if (!url) return res.status(400).send('URL required')
 
     const abortController = new AbortController()
-    req.on('close', () => {
-      abortController.abort()
-    })
+    this.abortWhenClientLeaves(res, abortController)
 
     try {
       const headers: Record<string, string> = {
@@ -177,9 +181,7 @@ export class ProxyController {
     if (!url) return res.status(400).send('URL required')
 
     const abortController = new AbortController()
-    req.on('close', () => {
-      abortController.abort()
-    })
+    this.abortWhenClientLeaves(res, abortController)
 
     try {
       const targetUrl = url as string
