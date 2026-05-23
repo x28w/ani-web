@@ -20,6 +20,7 @@ interface ImdbSuggestion {
 }
 
 const EMBED_BASE_URL = 'https://hnembed.cc'
+const VIDAPI_BASE_URL = 'https://vaplayer.ru'
 const IMDB_SUGGEST_URL = 'https://v3.sg.media-imdb.com/suggestion/x'
 const TV_TYPES = new Set(['tvSeries', 'tvMiniSeries'])
 
@@ -91,6 +92,20 @@ function decodeProviderId(providerId: string): { imdbId: string; season: number 
   return {
     imdbId: match[1],
     season: Math.max(1, Number(match[2]) || 1),
+  }
+}
+
+function createIframeSource(sourceName: string, link: string): VideoSource {
+  return {
+    sourceName,
+    type: 'iframe',
+    links: [
+      {
+        resolutionStr: 'Embed',
+        link,
+        hls: false,
+      },
+    ],
   }
 }
 
@@ -176,19 +191,36 @@ export class TwoEmbedProvider implements Provider {
     const episode = Number(episodeNumber)
     if (!id || !Number.isInteger(episode) || episode < 1) return null
 
-    return [
-      {
-        sourceName: '2Embed',
-        type: 'iframe',
-        links: [
-          {
-            resolutionStr: 'Embed',
-            link: `${EMBED_BASE_URL}/embed/tv/${id.imdbId}/${id.season}/${episode}?autoplay=1`,
-            hls: false,
-          },
-        ],
-      },
-    ]
+    const hnEmbedLink = `${EMBED_BASE_URL}/embed/tv/${id.imdbId}/${id.season}/${episode}?autoplay=1`
+    const vidApiLink = `${VIDAPI_BASE_URL}/embed/tv/${id.imdbId}/${id.season}/${episode}`
+    const sources: VideoSource[] = []
+
+    if (await this.hasHnEmbedEpisode(hnEmbedLink)) {
+      sources.push(createIframeSource('2Embed', hnEmbedLink))
+    }
+
+    sources.push(createIframeSource('VidAPI Backup', vidApiLink))
+    return sources
+  }
+
+  private async hasHnEmbedEpisode(url: string): Promise<boolean> {
+    const cacheKey = `2embed-episode-${url}`
+    const cached = this.cache.get<boolean>(cacheKey)
+    if (cached !== undefined) return cached
+
+    try {
+      const response = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } })
+      const html = await response.text()
+      const available =
+        response.ok &&
+        !html.includes('<title>Error 404</title>') &&
+        !html.includes('API call failed with HTTP code')
+      this.cache.set(cacheKey, available, available ? 3600 : 300)
+      return available
+    } catch (error) {
+      logger.warn({ err: error, url }, '2Embed episode availability check failed')
+      return false
+    }
   }
 
   async getShowMeta(showId: string): Promise<Partial<Show> | null> {
