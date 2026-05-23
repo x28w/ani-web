@@ -1,8 +1,11 @@
 #!/bin/bash
 set -e
-npm install --include=dev
-npm run setup
-npm run build
-npm prune --omit=dev --package-lock=false
-npm prune --prefix client --omit=dev --package-lock=false
-npm prune --prefix server --omit=dev --package-lock=false
+
+if [ ! -f client/dist/index.html ] || [ ! -f server/dist/server.js ]; then
+  echo "Prebuilt application files are missing. Pull the latest main branch before deploying."
+  exit 1
+fi
+
+# Frontend and TypeScript builds are produced before deployment. Keep the small host runtime-only.
+rm -rf client/node_modules server/node_modules
+npm ci --omit=dev --no-audit --no-fund

@@ -3,9 +3,7 @@
 /client/node_modules
 /server/node_modules
 
-# Build output
-/client/dist
-/server/dist
+# Built output is tracked so low-resource production hosts do not compile on-server.
 /runtime-data
 *.out
 

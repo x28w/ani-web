@@ -88,7 +88,7 @@ export const WatchedEpisodesRepository = {
   getContinueWatching: (db: DatabaseWrapper, userId: string, limit?: number) => {
     const limitClause = typeof limit === 'number' ? `LIMIT ${limit}` : ''
     const query = `
-      SELECT 
+      SELECT
         COALESCE(w.id, sm.id, we.showId) as _id,
         COALESCE(w.id, sm.id, we.showId) as id,
         COALESCE(w.name, sm.name, we.showId) as name,

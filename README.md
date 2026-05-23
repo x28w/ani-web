@@ -98,6 +98,25 @@ chmod +x run.sh
 run.bat
 ```
 
+### Alwaysdata Deployment
+
+The `main` branch includes prebuilt `client/dist` and `server/dist` output so small production
+hosts do not need to install frontend build tooling. On Alwaysdata, deploy with:
+
+```bash
+git pull origin main
+bash .build
+```
+
+Then run the configured service command:
+
+```bash
+npm start
+```
+
+Do not run `npm run setup` or `npm run build` on a low-resource Alwaysdata account. Those commands
+are intended for development or build runners and install Vite and TypeScript tooling.
+
 ### Commands
 
 Once installed globally, you can use the following commands:

@@ -129,7 +129,7 @@ out
 .pnp.*
 *.db
 /public/profile_pics
-/dist
+# Production assets are tracked for low-resource hosts that cannot compile on-server.
 device_id.json
 /sync_temp
 /server/dist

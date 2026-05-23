@@ -1,2 +1,8 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Deployment artifacts are served on Linux hosts and should remain normalized in Git.
+client/dist/** text eol=lf
+server/dist/** text eol=lf
+client/dist/favicon.ico binary
+client/dist/logo.png binary
