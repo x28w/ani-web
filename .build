@@ -1,4 +1,8 @@
 #!/bin/bash
-npm install
+set -e
+npm install --include=dev
 npm run setup
 npm run build
+npm prune --omit=dev --package-lock=false
+npm prune --prefix client --omit=dev --package-lock=false
+npm prune --prefix server --omit=dev --package-lock=false

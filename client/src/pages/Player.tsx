@@ -4,15 +4,7 @@ import toast from 'react-hot-toast'
 import styles from './Player.module.css'
 import layoutStyles from './PlayerPageLayout.module.css'
 import ToggleSwitch from '../components/common/ToggleSwitch'
-import {
-  FaCheck,
-  FaPlus,
-  FaChevronDown,
-  FaChevronUp,
-  FaBackward,
-  FaForward,
-  FaExternalLinkAlt,
-} from 'react-icons/fa'
+import { FaCheck, FaPlus, FaChevronDown, FaChevronUp, FaBackward, FaForward } from 'react-icons/fa'
 import { fixThumbnailUrl } from '../lib/utils'
 import ResumeModal from '../components/common/ResumeModal'
 import useIsMobile from '../hooks/useIsMobile'
@@ -65,52 +57,6 @@ const Player: React.FC = () => {
     isMarkingWatched,
     isUpdatingWatchlistStatus,
   } = usePlayerData(showId, episodeNumber, twoEmbedSeasonOverride)
-  const previousModeRef = useRef(state.currentMode)
-  const pendingModeEpisodeCheckRef = useRef(false)
-
-  useEffect(() => {
-    if (previousModeRef.current !== state.currentMode) {
-      previousModeRef.current = state.currentMode
-      pendingModeEpisodeCheckRef.current = true
-    }
-  }, [state.currentMode])
-
-  useEffect(() => {
-    if (!pendingModeEpisodeCheckRef.current || state.loadingShowData) return
-
-    pendingModeEpisodeCheckRef.current = false
-    if (
-      !showId ||
-      !state.currentEpisode ||
-      state.episodes.length === 0 ||
-      state.episodes.includes(state.currentEpisode)
-    ) {
-      return
-    }
-
-    const requestedEpisode = Number(state.currentEpisode)
-    const fallbackEpisode =
-      [...state.episodes]
-        .reverse()
-        .find((episode) => !Number.isNaN(requestedEpisode) && Number(episode) <= requestedEpisode) ||
-      state.episodes[0]
-
-    if (!fallbackEpisode || fallbackEpisode === state.currentEpisode) return
-
-    navigate(`/watch/${showId}/${fallbackEpisode}`, { replace: true })
-    dispatch({ type: 'SET_CURRENT_EPISODE', payload: fallbackEpisode })
-    toast(
-      `Episode ${state.currentEpisode} is unavailable in ${state.currentMode.toUpperCase()}. Switched to Episode ${fallbackEpisode}.`
-    )
-  }, [
-    dispatch,
-    navigate,
-    showId,
-    state.currentEpisode,
-    state.currentMode,
-    state.episodes,
-    state.loadingShowData,
-  ])
 
   const handleTwoEmbedSeasonChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     if (!showId) return
@@ -930,21 +876,6 @@ const Player: React.FC = () => {
             localStorage.setItem('preferredProvider', newProvider)
           }}
         />
-
-        {state.selectedProvider === 'animepahe' &&
-          state.selectedSource?.type === 'iframe' &&
-          state.selectedLink?.link && (
-            <a
-              className={styles.externalPlayerLink}
-              href={state.selectedLink.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Open AnimePahe player in a new tab"
-            >
-              <FaExternalLinkAlt />
-              <span>Open Player</span>
-            </a>
-          )}
 
         {state.selectedProvider === '2embed' && (
           <div className={styles.providerSelectContainer}>

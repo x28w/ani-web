@@ -126,33 +126,26 @@ export const usePlayerData = (
     isLoading: loadingShowData,
     error: showDataError,
   } = useQuery({
-    queryKey: ['show-data', showId, uiState.currentMode, uiState.selectedProvider],
+    queryKey: ['show-data', showId, uiState.currentMode],
     queryFn: async () => {
       if (!showId) throw new Error('No showId')
-      const useCanonicalEpisodeFallback =
-        uiState.currentMode === 'dub' && uiState.selectedProvider !== 'allanime'
-      const [meta, episodeData, canonicalEpisodeData, watchlistStatus, watchedEpisodes] =
-        await Promise.all([
-          fetchApi(`/api/show-meta/${showId}`),
-          fetchApi(`/api/episodes?showId=${showId}&mode=${uiState.currentMode}`).catch(() => null),
-          useCanonicalEpisodeFallback
-            ? fetchApi(`/api/episodes?showId=${showId}&mode=sub`).catch(() => null)
-            : Promise.resolve(null),
-          fetchApi(`/api/watchlist/check/${showId}`).catch(() => ({ inWatchlist: false })),
-          fetchApi(`/api/watched-episodes/${showId}`).catch(() => []),
-        ])
+      const [meta, episodeData, watchlistStatus, watchedEpisodes] = await Promise.all([
+        fetchApi(`/api/show-meta/${showId}`),
+        fetchApi(`/api/episodes?showId=${showId}&mode=${uiState.currentMode}`).catch(() => null),
+        fetchApi(`/api/watchlist/check/${showId}`).catch(() => ({ inWatchlist: false })),
+        fetchApi(`/api/watched-episodes/${showId}`).catch(() => []),
+      ])
 
-      const episodes = Array.from(
-        new Set<string>([...(episodeData?.episodes || []), ...(canonicalEpisodeData?.episodes || [])])
-      ).sort((a: string, b: string) => parseFloat(a) - parseFloat(b))
+      const episodes = episodeData?.episodes
+        ? episodeData.episodes.sort((a: string, b: string) => parseFloat(a) - parseFloat(b))
+        : []
 
       const localWatchedEpisodes = getLocalWatchedEpisodeNumbers(showId)
 
       return {
         showMeta: {
           ...meta,
-          description:
-            episodeData?.description || canonicalEpisodeData?.description || meta?.description,
+          description: episodeData?.description || meta?.description,
           names: meta?.names || {
             romaji: meta?.name,
             english: meta?.englishName,
