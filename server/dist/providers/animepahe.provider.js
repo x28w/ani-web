@@ -39,41 +39,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AnimePaheProvider = void 0;
 const cheerio = __importStar(require("cheerio"));
 const logger_1 = __importDefault(require("../logger"));
-function encodePackerToken(value, radix) {
-    if (value < radix) {
-        return value > 35 ? String.fromCharCode(value + 29) : value.toString(36);
-    }
-    return `${encodePackerToken(Math.floor(value / radix), radix)}${encodePackerToken(value % radix, radix)}`;
-}
-function unpackPackerScripts(html) {
-    const packedScriptPattern = /\}\('((?:\\.|[^'])*)',(\d+),(\d+),'((?:\\.|[^'])*)'\.split\('\|'\)/g;
-    const scripts = [];
-    let match;
-    while ((match = packedScriptPattern.exec(html))) {
-        const payload = match[1].replace(/\\'/g, "'").replace(/\\\\/g, '\\');
-        const radix = Number(match[2]);
-        const count = Number(match[3]);
-        const dictionary = match[4].split('|');
-        const replacements = new Map();
-        for (let index = 0; index < count; index++) {
-            const token = encodePackerToken(index, radix);
-            replacements.set(token, dictionary[index] || token);
-        }
-        scripts.push(payload.replace(/\b\w+\b/g, (token) => replacements.get(token) || token));
-    }
-    return scripts;
-}
-function extractHlsUrl(html) {
-    const directMatch = html.match(/https?:\/\/[^'"\s]+\.m3u8[^'"\s]*/i);
-    if (directMatch)
-        return directMatch[0];
-    for (const script of unpackPackerScripts(html)) {
-        const unpackedMatch = script.match(/https?:\/\/[^'"\s]+\.m3u8[^'"\s]*/i);
-        if (unpackedMatch)
-            return unpackedMatch[0];
-    }
-    return null;
-}
 class AnimePaheProvider {
     name = 'AnimePahe';
     base = 'https://animepahe.pw';
@@ -227,37 +192,32 @@ class AnimePaheProvider {
             if (!epSession)
                 return null;
             const sources = await this.getSources(showId, epSession);
-            const matchingSources = sources.filter((src) => {
+            const videoSources = [];
+            for (const src of sources) {
                 const audio = (src.audio || '').trim().toLowerCase();
                 const sourceMode = audio.includes('eng') || audio.includes('dub')
                     ? 'dub'
                     : audio.includes('jpn') || audio.includes('jap') || audio.includes('sub')
                         ? 'sub'
                         : null;
-                return sourceMode === mode;
-            });
-            const resolvedSources = await Promise.all(matchingSources.map(async (src) => {
-                const resolved = await this.resolveKwik(src.url);
-                if (!resolved.m3u8)
-                    return null;
+                if (sourceMode !== mode)
+                    continue;
                 const label = src.fansub
-                    ? `${src.quality || 'Auto'} - ${src.fansub} (${mode.toUpperCase()})`
-                    : `${src.quality || 'Auto'} (${mode.toUpperCase()})`;
-                return {
+                    ? `${src.quality || 'Auto'} - ${src.fansub} (${sourceMode.toUpperCase()})`
+                    : `${src.quality || 'Auto'} (${sourceMode.toUpperCase()})`;
+                videoSources.push({
                     sourceName: label,
                     links: [
                         {
                             resolutionStr: src.quality || 'Auto',
-                            link: resolved.m3u8,
-                            hls: true,
-                            headers: { Referer: resolved.referer },
+                            link: src.url,
+                            hls: false,
                         },
                     ],
-                    type: 'player',
+                    type: 'iframe',
                     actualEpisodeNumber: episodeNumber,
-                };
-            }));
-            const videoSources = resolvedSources.filter((source) => source !== null);
+                });
+            }
             return videoSources.length > 0 ? videoSources : null;
         }
         catch {
@@ -295,31 +255,32 @@ class AnimePaheProvider {
         }
     }
     async resolveKwik(kwikUrl) {
-        const cacheKey = `animepahe_kwik_${kwikUrl}`;
-        const cached = this.cache.get(cacheKey);
-        if (cached)
-            return cached;
         try {
-            const response = await fetch(kwikUrl, {
+            const fetchUrl = kwikUrl.replace('/e/', '/f/');
+            const response = await fetch(fetchUrl, {
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                     Referer: 'https://animepahe.pw/',
                 },
             });
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
             const html = await response.text();
             if (html.includes('Just a moment')) {
                 throw new Error('Kwik triggered a Cloudflare challenge.');
             }
-            const m3u8 = extractHlsUrl(html);
-            if (m3u8) {
-                const result = { m3u8, referer: kwikUrl };
-                this.cache.set(cacheKey, result, 900);
-                return result;
+            const directMatch = html.match(/(?:source|file)\s*:\s*['"]([^'"]+\.m3u8)['"]/);
+            if (directMatch)
+                return { m3u8: directMatch[1], referer: kwikUrl };
+            const packedMatch = html.match(/'([^']{50,})'\.split\('\|'\)/);
+            if (packedMatch) {
+                const parts = packedMatch[1].split('|');
+                const hash = parts.find((p) => p.length === 64 && /^[a-f0-9]+$/.test(p));
+                const domain = parts.find((p) => p.includes('owocdn'));
+                if (hash) {
+                    const cdn = domain || 'na.owocdn.top';
+                    return { m3u8: `https://${cdn}/stream/01/${hash}/uwu.m3u8`, referer: kwikUrl };
+                }
             }
-            throw new Error('Could not find HLS source in Kwik HTML');
+            throw new Error('Could not regex m3u8 link from Kwik HTML');
         }
         catch (err) {
             const error = err;

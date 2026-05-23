@@ -24,13 +24,6 @@ exports.axiosInstance = axios_1.default.create({
 });
 (0, axios_retry_1.default)(exports.axiosInstance, { retries: 3, retryDelay: axios_retry_1.default.exponentialDelay });
 class ProxyController {
-    abortWhenClientLeaves(res, abortController) {
-        res.on('close', () => {
-            if (!res.writableEnded) {
-                abortController.abort();
-            }
-        });
-    }
     handleProxy = async (req, res) => {
         const { url, referer } = req.query;
         if (!url)
@@ -39,7 +32,9 @@ class ProxyController {
         const refererStr = referer || '';
         const cacheKey = `m3u8-${urlStr}-${refererStr}`;
         const abortController = new AbortController();
-        this.abortWhenClientLeaves(res, abortController);
+        req.on('close', () => {
+            abortController.abort();
+        });
         try {
             const headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -62,8 +57,6 @@ class ProxyController {
                     signal: abortController.signal,
                 });
                 const baseUrl = new URL(urlStr);
-                const proxiedMediaUrl = (targetUrl) => `/api/proxy?url=${encodeURIComponent(targetUrl)}&referer=${encodeURIComponent(refererStr)}`;
-                const requiresProxyHeaders = Boolean(refererStr);
                 const rewritten = resp.data
                     .split('\n')
                     .map((l) => {
@@ -71,17 +64,17 @@ class ProxyController {
                     if (!line)
                         return l;
                     if (line.startsWith('#')) {
-                        return line.replace(/URI="([^"]+)"/g, (_match, uri) => {
+                        return line.replace(/URI="([^"]+)"/g, (match, uri) => {
                             const fullUri = new URL(uri, baseUrl).href;
-                            if (requiresProxyHeaders || fullUri.includes('.m3u8')) {
-                                return `URI="${proxiedMediaUrl(fullUri)}"`;
+                            if (fullUri.includes('.m3u8')) {
+                                return `URI="/api/proxy?url=${encodeURIComponent(fullUri)}&referer=${encodeURIComponent(refererStr)}"`;
                             }
                             return `URI="${fullUri}"`;
                         });
                     }
                     const fullUrl = new URL(line, baseUrl).href;
-                    if (requiresProxyHeaders || fullUrl.includes('.m3u8')) {
-                        return proxiedMediaUrl(fullUrl);
+                    if (fullUrl.includes('.m3u8')) {
+                        return `/api/proxy?url=${encodeURIComponent(fullUrl)}&referer=${encodeURIComponent(refererStr)}`;
                     }
                     return fullUrl;
                 })
@@ -144,7 +137,9 @@ class ProxyController {
         if (!url)
             return res.status(400).send('URL required');
         const abortController = new AbortController();
-        this.abortWhenClientLeaves(res, abortController);
+        req.on('close', () => {
+            abortController.abort();
+        });
         try {
             const headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -169,7 +164,9 @@ class ProxyController {
         if (!url)
             return res.status(400).send('URL required');
         const abortController = new AbortController();
-        this.abortWhenClientLeaves(res, abortController);
+        req.on('close', () => {
+            abortController.abort();
+        });
         try {
             const targetUrl = url;
             let refererValue = 'https://allanime.day';

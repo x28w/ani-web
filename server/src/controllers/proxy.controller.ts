@@ -25,14 +25,6 @@ export const axiosInstance = axios.create({
 axiosRetry(axiosInstance, { retries: 3, retryDelay: axiosRetry.exponentialDelay })
 
 export class ProxyController {
-  private abortWhenClientLeaves(res: Response, abortController: AbortController) {
-    res.on('close', () => {
-      if (!res.writableEnded) {
-        abortController.abort()
-      }
-    })
-  }
-
   handleProxy = async (req: Request, res: Response) => {
     const { url, referer } = req.query
     if (!url) return res.status(400).send('URL required')
@@ -42,7 +34,9 @@ export class ProxyController {
     const cacheKey = `m3u8-${urlStr}-${refererStr}`
 
     const abortController = new AbortController()
-    this.abortWhenClientLeaves(res, abortController)
+    req.on('close', () => {
+      abortController.abort()
+    })
 
     try {
       const headers: Record<string, string> = {
@@ -68,9 +62,6 @@ export class ProxyController {
         })
 
         const baseUrl = new URL(urlStr)
-        const proxiedMediaUrl = (targetUrl: string) =>
-          `/api/proxy?url=${encodeURIComponent(targetUrl)}&referer=${encodeURIComponent(refererStr)}`
-        const requiresProxyHeaders = Boolean(refererStr)
         const rewritten = resp.data
           .split('\n')
           .map((l: string) => {
@@ -78,18 +69,18 @@ export class ProxyController {
             if (!line) return l
 
             if (line.startsWith('#')) {
-              return line.replace(/URI="([^"]+)"/g, (_match, uri) => {
+              return line.replace(/URI="([^"]+)"/g, (match, uri) => {
                 const fullUri = new URL(uri, baseUrl).href
-                if (requiresProxyHeaders || fullUri.includes('.m3u8')) {
-                  return `URI="${proxiedMediaUrl(fullUri)}"`
+                if (fullUri.includes('.m3u8')) {
+                  return `URI="/api/proxy?url=${encodeURIComponent(fullUri)}&referer=${encodeURIComponent(refererStr)}"`
                 }
                 return `URI="${fullUri}"`
               })
             }
 
             const fullUrl = new URL(line, baseUrl).href
-            if (requiresProxyHeaders || fullUrl.includes('.m3u8')) {
-              return proxiedMediaUrl(fullUrl)
+            if (fullUrl.includes('.m3u8')) {
+              return `/api/proxy?url=${encodeURIComponent(fullUrl)}&referer=${encodeURIComponent(refererStr)}`
             }
             return fullUrl
           })
@@ -155,7 +146,9 @@ export class ProxyController {
     if (!url) return res.status(400).send('URL required')
 
     const abortController = new AbortController()
-    this.abortWhenClientLeaves(res, abortController)
+    req.on('close', () => {
+      abortController.abort()
+    })
 
     try {
       const headers: Record<string, string> = {
@@ -181,7 +174,9 @@ export class ProxyController {
     if (!url) return res.status(400).send('URL required')
 
     const abortController = new AbortController()
-    this.abortWhenClientLeaves(res, abortController)
+    req.on('close', () => {
+      abortController.abort()
+    })
 
     try {
       const targetUrl = url as string
