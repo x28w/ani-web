@@ -92,7 +92,12 @@ function migrateWatchedEpisodesForUsers(db: DatabaseWrapper, initOpts: { skipSav
     initOpts
   )
   db.run('DROP TABLE watched_episodes', undefined, undefined, initOpts)
-  db.run('ALTER TABLE watched_episodes_new RENAME TO watched_episodes', undefined, undefined, initOpts)
+  db.run(
+    'ALTER TABLE watched_episodes_new RENAME TO watched_episodes',
+    undefined,
+    undefined,
+    initOpts
+  )
 }
 
 export async function waitForSync(): Promise<void> {
@@ -543,10 +548,8 @@ export async function initializeDatabase(dbPath: string): Promise<DatabaseWrappe
       initOpts
     )
 
-    db.run('DELETE FROM watched_episodes WHERE showId NOT IN (SELECT id FROM watchlist)')
     db.run('DELETE FROM dismissed_notifications WHERE showId NOT IN (SELECT id FROM watchlist)')
     db.run('DELETE FROM discovered_notifications WHERE showId NOT IN (SELECT id FROM watchlist)')
-    db.run('DELETE FROM shows_meta WHERE id NOT IN (SELECT id FROM watchlist)')
 
     db.run(
       'DELETE FROM dismissed_notifications WHERE EXISTS (SELECT 1 FROM watched_episodes we WHERE we.showId = dismissed_notifications.showId AND we.episodeNumber = dismissed_notifications.episodeNumber)'

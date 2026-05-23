@@ -570,7 +570,8 @@ const Player: React.FC = () => {
   const isCurrentEpisodeWatched = !!(
     state.currentEpisode && state.watchedEpisodes.includes(state.currentEpisode)
   )
-  const showManualWatchedButton = state.selectedProvider !== 'allanime'
+  const showManualWatchedButton =
+    state.selectedProvider !== 'allanime' || state.selectedSource?.type === 'iframe'
 
   useEffect(() => {
     const videoElement = refs.videoRef.current
