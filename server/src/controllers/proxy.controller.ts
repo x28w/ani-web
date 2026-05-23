@@ -191,18 +191,41 @@ export class ProxyController {
         signal: abortController.signal,
       })
 
-      const baseTag = `<base href="${targetUrl.origin}/">`
       const kwikReferer = JSON.stringify(targetUrl.href).replace(/</g, '\\u003c')
+      const iconProxyUrl = `/api/proxy?url=${encodeURIComponent(`${targetUrl.origin}/app/js/vendor/plyr.svg`)}&referer=${encodeURIComponent(targetUrl.href)}`
+      const iconProxyPatch = `<script>Plyr.defaults.iconUrl=${JSON.stringify(iconProxyUrl).replace(/</g, '\\u003c')};</script>`
       const playlistProxyPatch = `<script>(function(){var original=Hls.prototype.loadSource;Hls.prototype.loadSource=function(source){if(typeof source==='string'&&source.indexOf('.m3u8')!==-1){source=window.location.origin+'/api/proxy?url='+encodeURIComponent(source)+'&referer='+encodeURIComponent(${kwikReferer});}return original.call(this,source);};})();</script>`
-      let html = response.data.replace(/<head([^>]*)>/i, `<head$1>${baseTag}`)
+      let html = response.data
+        .replace(
+          /\b(src|href)=(["'])(\/\/[^"']+|\/(?!\/)[^"']*)\2/gi,
+          (_match, attribute, quote, resourcePath) => {
+            const assetUrl = resourcePath.startsWith('//')
+              ? `https:${resourcePath}`
+              : `${targetUrl.origin}${resourcePath}`
+            return `${attribute}=${quote}${assetUrl}${quote}`
+          }
+        )
+        .replace(
+          /url\((["']?)(\/\/[^"')]+|\/(?!\/)[^"')]+)\1\)/gi,
+          (_match, quote, resourcePath) => {
+            const assetUrl = resourcePath.startsWith('//')
+              ? `https:${resourcePath}`
+              : `${targetUrl.origin}${resourcePath}`
+            return `url(${quote}${assetUrl}${quote})`
+          }
+        )
 
-      const patchedHtml = html.replace(
+      const iconPatchedHtml = html.replace(
+        /(<script[^>]+\/app\/js\/vendor\/plyr\.min\.js[^>]*><\/script>)/i,
+        `$1${iconProxyPatch}`
+      )
+      const patchedHtml = iconPatchedHtml.replace(
         /(<script[^>]+hls(?:\.min)?\.js[^>]*><\/script>)/i,
         `$1${playlistProxyPatch}`
       )
 
-      if (patchedHtml === html) {
-        return res.status(502).send('Embed player script not found')
+      if (iconPatchedHtml === html || patchedHtml === iconPatchedHtml) {
+        return res.status(502).send('Embed player scripts not found')
       }
       html = patchedHtml
 
