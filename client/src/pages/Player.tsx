@@ -862,7 +862,6 @@ const Player: React.FC = () => {
 
         <ProviderSelector
           selectedProvider={state.selectedProvider}
-          currentMode={state.currentMode}
           onProviderChange={(newProvider) => {
             dispatch({
               type: 'SET_STATE',
@@ -1022,14 +1021,8 @@ const Player: React.FC = () => {
                     isChecked={state.currentMode === 'dub'}
                     onChange={(e) => {
                       const mode = e.target.checked ? 'dub' : 'sub'
-                      const switchFromSubOnlyProvider =
-                        mode === 'dub' && state.selectedProvider === '2embed'
                       dispatch({ type: 'SET_MODE', payload: mode })
                       localStorage.setItem('preferredMode', mode)
-                      if (switchFromSubOnlyProvider) {
-                        localStorage.setItem('preferredProvider', 'allanime')
-                        toast('2Embed is SUB only. Switched to AllAnime for DUB.')
-                      }
                     }}
                   />
                   <span>DUB</span>

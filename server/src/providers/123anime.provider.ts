@@ -197,19 +197,17 @@ export class _123AnimeProvider implements Provider {
     }
   }
 
-  async getStreamUrls(showId: string, episodeNumber: string): Promise<VideoSource[] | null> {
+  async getStreamUrls(
+    showId: string,
+    episodeNumber: string,
+    mode: 'sub' | 'dub'
+  ): Promise<VideoSource[] | null> {
     try {
-      const query = showId.replace(/ /g, '-')
-      const searchResults = await this.search({ query })
+      const animeId = showId.trim()
+      if (!animeId) return null
 
-      if (!searchResults || searchResults.length === 0) {
-        return null
-      }
-
-      const match =
-        searchResults.find((s) => s.id === showId || s._id === showId) ||
-        this.bestMatch(searchResults, showId)
-      const animeId = match.id || match._id
+      const isDubResult = /\bdub\b/i.test(animeId.replace(/-/g, ' '))
+      if ((mode === 'dub') !== isDubResult) return []
 
       const url = `${BASE_URL}/episode-stream?id=${animeId}&ep=${episodeNumber}`
 
@@ -237,7 +235,7 @@ export class _123AnimeProvider implements Provider {
 
       return [
         {
-          sourceName: '123Anime',
+          sourceName: `123Anime (${mode.toUpperCase()})`,
           links: [
             {
               resolutionStr: 'auto',

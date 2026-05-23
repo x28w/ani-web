@@ -703,20 +703,22 @@ export class AnimeyaProvider implements Provider {
 
       const sourcesData = await this.getEpisodeSourcesInternal(String(episode.id))
       const processedSources: VideoSource[] = []
+      const modeLabel = mode.toUpperCase()
 
       for (const source of sourcesData.sources) {
         const subType = (source.subType || '').toUpperCase()
         const langue = (source.langue || '').toUpperCase()
 
-        const isSub = ['SOFT', 'HARD', 'SUB'].includes(subType)
+        const isSub =
+          ['SOFT', 'HARD', 'SUB'].includes(subType) || ['JPN', 'JAP'].includes(langue)
         const isDub = subType === 'DUB' || (subType === 'NONE' && langue === 'ENG')
 
         if (mode === 'dub' && !isDub) continue
-        if (mode === 'sub' && isDub) continue
+        if (mode === 'sub' && !isSub) continue
 
         if (source.type === 'HLS' || source.url.includes('.m3u8')) {
           processedSources.push({
-            sourceName: source.name,
+            sourceName: `${source.name} (${modeLabel})`,
             type: 'player',
             links: [
               {
@@ -742,7 +744,7 @@ export class AnimeyaProvider implements Provider {
             const match = embedHtml.match(/src:\s*"(https:\/\/.*?\.mp4)"/)
             if (match) {
               processedSources.push({
-                sourceName: source.name,
+                sourceName: `${source.name} (${modeLabel})`,
                 type: 'player',
                 links: [
                   {
@@ -761,7 +763,7 @@ export class AnimeyaProvider implements Provider {
               })
             } else {
               processedSources.push({
-                sourceName: source.name,
+                sourceName: `${source.name} (${modeLabel})`,
                 type: 'iframe',
                 links: [{ resolutionStr: 'iframe', link: source.url, hls: false }],
                 actualEpisodeNumber: String(episode.episodeNumber),
@@ -769,7 +771,7 @@ export class AnimeyaProvider implements Provider {
             }
           } catch {
             processedSources.push({
-              sourceName: source.name,
+              sourceName: `${source.name} (${modeLabel})`,
               type: 'iframe',
               links: [{ resolutionStr: 'iframe', link: source.url, hls: false }],
               actualEpisodeNumber: String(episode.episodeNumber),
@@ -777,7 +779,7 @@ export class AnimeyaProvider implements Provider {
           }
         } else if (source.name === 'Ok') {
           processedSources.push({
-            sourceName: source.name,
+            sourceName: `${source.name} (${modeLabel})`,
             type: 'iframe',
             links: [{ resolutionStr: 'iframe', link: source.url, hls: false }],
             actualEpisodeNumber: String(episode.episodeNumber),
@@ -791,7 +793,7 @@ export class AnimeyaProvider implements Provider {
             const extracted = await this.extractEpisodeHls(source.url)
             if (extracted && extracted.hls && extracted.hls.length > 0) {
               processedSources.push({
-                sourceName: `${source.name} (Extracted)`,
+                sourceName: `${source.name} (Extracted, ${modeLabel})`,
                 type: 'player',
                 links: extracted.hls.map((hlsUrl) => ({
                   resolutionStr: 'Auto',
@@ -808,7 +810,7 @@ export class AnimeyaProvider implements Provider {
               })
             } else {
               processedSources.push({
-                sourceName: source.name,
+                sourceName: `${source.name} (${modeLabel})`,
                 type: 'iframe',
                 links: [
                   {
@@ -822,7 +824,7 @@ export class AnimeyaProvider implements Provider {
             }
           } catch {
             processedSources.push({
-              sourceName: source.name,
+              sourceName: `${source.name} (${modeLabel})`,
               type: 'iframe',
               links: [
                 {

@@ -189,10 +189,8 @@ export class TwoEmbedProvider implements Provider {
   async getStreamUrls(
     showId: string,
     episodeNumber: string,
-    mode: 'sub' | 'dub'
+    _mode: 'sub' | 'dub'
   ): Promise<VideoSource[] | null> {
-    if (mode === 'dub') return []
-
     const id = decodeProviderId(showId)
     const episode = Number(episodeNumber)
     if (!id || !Number.isInteger(episode) || episode < 1) return null
@@ -202,10 +200,10 @@ export class TwoEmbedProvider implements Provider {
     const sources: VideoSource[] = []
 
     if (await this.hasHnEmbedEpisode(hnEmbedLink)) {
-      sources.push(createIframeSource('2Embed (SUB)', hnEmbedLink))
+      sources.push(createIframeSource('HNEmbed (Audio varies)', hnEmbedLink))
     }
 
-    sources.push(createIframeSource('VidAPI Backup (SUB)', vidApiLink))
+    sources.push(createIframeSource('VidAPI (Audio varies)', vidApiLink))
     return sources
   }
 

@@ -213,7 +213,11 @@ export class AnimePaheProvider implements Provider {
     return null
   }
 
-  async getStreamUrls(showId: string, episodeNumber: string): Promise<VideoSource[] | null> {
+  async getStreamUrls(
+    showId: string,
+    episodeNumber: string,
+    mode: 'sub' | 'dub'
+  ): Promise<VideoSource[] | null> {
     try {
       const epSession = await this.getEpisodeSession(showId, episodeNumber)
       if (!epSession) return null
@@ -222,9 +226,19 @@ export class AnimePaheProvider implements Provider {
       const videoSources: VideoSource[] = []
 
       for (const src of sources) {
+        const audio = (src.audio || '').trim().toLowerCase()
+        const sourceMode =
+          audio.includes('eng') || audio.includes('dub')
+            ? 'dub'
+            : audio.includes('jpn') || audio.includes('jap') || audio.includes('sub')
+              ? 'sub'
+              : null
+
+        if (sourceMode !== mode) continue
+
         const label = src.fansub
-          ? `${src.quality || 'Auto'} - ${src.fansub} (${src.audio || 'jpn'})`
-          : `${src.quality || 'Auto'} - ${src.audio || 'jpn'}`
+          ? `${src.quality || 'Auto'} - ${src.fansub} (${sourceMode.toUpperCase()})`
+          : `${src.quality || 'Auto'} (${sourceMode.toUpperCase()})`
 
         videoSources.push({
           sourceName: label,
@@ -236,6 +250,7 @@ export class AnimePaheProvider implements Provider {
             },
           ],
           type: 'iframe',
+          actualEpisodeNumber: episodeNumber,
         })
       }
 

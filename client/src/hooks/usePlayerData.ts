@@ -190,6 +190,7 @@ export const usePlayerData = (
       if (!showId || !uiState.currentEpisode) throw new Error('Missing params')
 
       let providerShowId = showId
+      let providerMatchFound = true
       if (['animepahe', '123anime', 'animeya', '2embed'].includes(uiState.selectedProvider)) {
         const names = showData?.showMeta?.names
         // AlAnime's `name` field is often the native Japanese script (e.g. "ブリーチ"
@@ -206,96 +207,122 @@ export const usePlayerData = (
         const romajiName = names?.romaji && isAscii(names.romaji) ? names.romaji : null
         const englishName =
           names?.english || showData?.showMeta?.englishName || showData?.showMeta?.name
-        const searchQuery =
-          uiState.currentMode === 'dub' ? englishName || romajiName : romajiName || englishName
+        const titleCandidates = Array.from(
+          new Set(
+            [englishName, romajiName, showData?.showMeta?.name]
+              .filter(
+                (title): title is string => typeof title === 'string' && title.trim().length > 0
+              )
+              .map((title) => title.trim())
+          )
+        )
+        const searchQuery = titleCandidates[0]
 
         if (searchQuery) {
-          const searchParams = new URLSearchParams({
-            query: String(searchQuery),
-            provider: uiState.selectedProvider,
-          })
-
-          if (uiState.selectedProvider === '2embed') {
-            const aliases = Array.from(
-              new Set(
-                [
-                  names?.english,
-                  names?.romaji,
-                  showData?.showMeta?.englishName,
-                  showData?.showMeta?.name,
-                ]
-                  .filter(
-                    (title): title is string => typeof title === 'string' && title.trim().length > 0
-                  )
-                  .map((title) => title.trim())
-                  .filter((title) => title !== searchQuery)
-              )
-            )
-            if (aliases.length) searchParams.set('aliases', aliases.join('|'))
-            if (twoEmbedSeasonOverride) {
-              searchParams.set('season', String(twoEmbedSeasonOverride))
-            }
+          interface SearchResult {
+            id: string
+            session?: string
+            name?: string
+            title?: string
           }
 
-          const searchResults = await fetchApi(`/api/search?${searchParams.toString()}`)
-          if (searchResults && searchResults.length > 0) {
-            interface SearchResult {
-              id: string
-              session?: string
-              name?: string
-              title?: string
-            }
-            // Score each result by title closeness to the search query AND
-            // whether it matches the current sub/dub mode.
-            // Scoring:
-            //   +4  exact title match (case-insensitive)
-            //   +2  title starts with query
-            //   +1  title contains query
-            //   +0  id starts with normalised query slug
-            //   -10 wrong mode (dub result when sub wanted, or vice versa)
-            const qLower = (searchQuery as string).toLowerCase().trim()
-            const toSlug = (s: string) =>
-              s
-                .toLowerCase()
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/^-+|-+$/g, '')
-            const qSlug = toSlug(qLower)
+          const fetchSearchResults = async (query: string): Promise<SearchResult[]> => {
+            const searchParams = new URLSearchParams({
+              query,
+              provider: uiState.selectedProvider,
+            })
 
-            let bestMatch: SearchResult = searchResults[0]
-            let bestScore = -Infinity
-
-            for (const s of searchResults as SearchResult[]) {
-              const title = (s.name || s.title || '').toLowerCase().trim()
-              const sid = (s.id || '').toLowerCase()
-              const isDubResult =
-                title.includes('(dub)') || title.endsWith(' dub') || sid.endsWith('-dub')
-              const wantDub = uiState.currentMode === 'dub'
-
-              let score = 0
-              if (title === qLower) score += 4
-              else if (title.startsWith(qLower)) score += 2
-              else if (title.includes(qLower)) score += 1
-              else if (sid.startsWith(qSlug)) score += 0
-
-              // Heavy penalty for wrong mode so a correct-mode partial match
-              // beats an exact wrong-mode match
-              if (isDubResult !== wantDub) score -= 10
-
-              if (score > bestScore) {
-                bestScore = score
-                bestMatch = s
+            if (uiState.selectedProvider === '2embed') {
+              const aliases = titleCandidates.filter((title) => title !== query)
+              if (aliases.length) searchParams.set('aliases', aliases.join('|'))
+              if (twoEmbedSeasonOverride) {
+                searchParams.set('season', String(twoEmbedSeasonOverride))
               }
             }
 
-            providerShowId = bestMatch.session || bestMatch.id
+            return (await fetchApi(`/api/search?${searchParams.toString()}`)) as SearchResult[]
           }
+
+          const resultSets =
+            uiState.selectedProvider === '2embed'
+              ? [await fetchSearchResults(searchQuery)]
+              : await Promise.all(titleCandidates.slice(0, 2).map(fetchSearchResults))
+          const uniqueResults = new Map<string, SearchResult>()
+          resultSets.flat().forEach((result) => {
+            uniqueResults.set(result.session || result.id, result)
+          })
+
+          const normalizeTitle = (title: string) =>
+            title
+              .toLowerCase()
+              .replace(/\bdub\b/g, ' ')
+              .replace(/\b(\d+)(?:st|nd|rd|th)\s+season\b/g, 'season $1')
+              .replace(/[^a-z0-9]+/g, ' ')
+              .trim()
+          const comparableTitles = titleCandidates.map(normalizeTitle).filter(Boolean)
+          let bestMatch: SearchResult | undefined
+          let bestScore = -Infinity
+
+          for (const result of uniqueResults.values()) {
+            const resultLabel = `${result.name || result.title || ''} ${result.id || ''}`
+            const isDubResult = /\bdub\b/i.test(resultLabel.replace(/-/g, ' '))
+            if (
+              uiState.selectedProvider === '123anime' &&
+              isDubResult !== (uiState.currentMode === 'dub')
+            ) {
+              continue
+            }
+
+            const normalizedResultTitle = normalizeTitle(result.name || result.title || '')
+            const score = Math.max(
+              ...comparableTitles.map((candidate) => {
+                if (normalizedResultTitle === candidate) return 100
+                if (
+                  normalizedResultTitle.startsWith(candidate) ||
+                  candidate.startsWith(normalizedResultTitle)
+                ) {
+                  return 60
+                }
+                if (
+                  normalizedResultTitle.includes(candidate) ||
+                  candidate.includes(normalizedResultTitle)
+                ) {
+                  return 40
+                }
+
+                const candidateTerms = new Set(
+                  candidate.split(' ').filter((term) => term.length > 2)
+                )
+                const overlap = normalizedResultTitle
+                  .split(' ')
+                  .filter((term) => candidateTerms.has(term)).length
+                return overlap * 10
+              })
+            )
+
+            if (score > bestScore) {
+              bestMatch = result
+              bestScore = score
+            }
+          }
+
+          const minimumScore = uiState.selectedProvider === '2embed' ? 40 : 100
+          if (bestMatch && bestScore >= minimumScore) {
+            providerShowId = bestMatch.session || bestMatch.id
+          } else {
+            providerMatchFound = false
+          }
+        } else {
+          providerMatchFound = false
         }
       }
 
       const [sources, serverProgress, preferredSourceData, skipTimesData] = await Promise.all([
-        fetchApi(
-          `/api/video?showId=${providerShowId}&episodeNumber=${uiState.currentEpisode}&mode=${uiState.currentMode}&provider=${uiState.selectedProvider}`
-        ),
+        providerMatchFound
+          ? fetchApi(
+              `/api/video?showId=${providerShowId}&episodeNumber=${uiState.currentEpisode}&mode=${uiState.currentMode}&provider=${uiState.selectedProvider}`
+            )
+          : Promise.resolve([]),
         fetchApi(`/api/episode-progress/${showId}/${uiState.currentEpisode}`).catch(() => null),
         fetchApi(`/api/settings?key=preferredSource`).catch(() => null),
         fetchApi(`/api/skip-times/${showId}/${uiState.currentEpisode}`).catch(() => []),
@@ -303,20 +330,7 @@ export const usePlayerData = (
 
       const preferredSourceName = preferredSourceData?.value
 
-      const modeMatchedSources = (sources as VideoSource[]).filter((s) => {
-        const name = s.sourceName.toLowerCase()
-        if (uiState.currentMode === 'dub') {
-          return name.includes('eng') || name.includes('dub')
-        } else {
-          return (
-            name.includes('jpn') ||
-            name.includes('sub') ||
-            (!name.includes('eng') && !name.includes('dub'))
-          )
-        }
-      })
-
-      const pool = modeMatchedSources.length > 0 ? modeMatchedSources : (sources as VideoSource[])
+      const pool = sources as VideoSource[]
       let sourceToSelect: VideoSource | null = pool.length > 0 ? pool[0] : null
 
       if (preferredSourceName) {
