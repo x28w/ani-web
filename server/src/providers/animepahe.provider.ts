@@ -213,6 +213,24 @@ export class AnimePaheProvider implements Provider {
     return null
   }
 
+  private inferSourceMode(src: AnimePaheVideoSource): 'sub' | 'dub' | null {
+    const audio = (src.audio || '').trim().toLowerCase()
+    const label = `${src.fansub || ''} ${src.quality || ''}`.toLowerCase()
+    const combined = `${audio} ${label}`
+
+    if (combined.includes('eng') || combined.includes('dub')) return 'dub'
+    if (
+      combined.includes('jpn') ||
+      combined.includes('jap') ||
+      combined.includes('sub') ||
+      combined.includes('japanese')
+    ) {
+      return 'sub'
+    }
+
+    return null
+  }
+
   async getStreamUrls(
     showId: string,
     episodeNumber: string,
@@ -223,39 +241,44 @@ export class AnimePaheProvider implements Provider {
       if (!epSession) return null
 
       const sources = await this.getSources(showId, epSession)
+      if (sources.length === 0) return null
+
+      const modeMatchedSources = sources.filter((src) => {
+        const sourceMode = this.inferSourceMode(src)
+        return !sourceMode || sourceMode === mode
+      })
+
+      const selectedSources = modeMatchedSources.length > 0 ? modeMatchedSources : sources
       const videoSources: VideoSource[] = []
 
-      for (const src of sources) {
-        const audio = (src.audio || '').trim().toLowerCase()
-        const sourceMode =
-          audio.includes('eng') || audio.includes('dub')
-            ? 'dub'
-            : audio.includes('jpn') || audio.includes('jap') || audio.includes('sub')
-              ? 'sub'
-              : null
-
-        if (sourceMode !== mode) continue
-
+      for (const src of selectedSources) {
+        const sourceMode = this.inferSourceMode(src) || mode
         const label = src.fansub
           ? `${src.quality || 'Auto'} - ${src.fansub} (${sourceMode.toUpperCase()})`
           : `${src.quality || 'Auto'} (${sourceMode.toUpperCase()})`
+
+        const resolved = await this.resolveKwik(src.url)
+        const playableUrl = resolved.m3u8 || src.url
+        const isNativePlayer = !!resolved.m3u8
 
         videoSources.push({
           sourceName: label,
           links: [
             {
               resolutionStr: src.quality || 'Auto',
-              link: src.url,
-              hls: false,
+              link: playableUrl,
+              hls: isNativePlayer,
+              headers: isNativePlayer ? { Referer: resolved.referer } : undefined,
             },
           ],
-          type: 'iframe',
+          type: isNativePlayer ? 'player' : 'iframe',
           actualEpisodeNumber: episodeNumber,
         })
       }
 
       return videoSources.length > 0 ? videoSources : null
-    } catch {
+    } catch (err) {
+      logger.error({ err, showId, episodeNumber, mode }, 'AnimePahe getStreamUrls failed')
       return null
     }
   }
@@ -313,7 +336,8 @@ export class AnimePaheProvider implements Provider {
         throw new Error('Kwik triggered a Cloudflare challenge.')
       }
 
-      const directMatch = html.match(/(?:source|file)\s*:\s*['"]([^'"]+\.m3u8)['"]/)
+      const directMatch = html.match(/(?:source|file)\s*:\s*['"]([^'"]+\.m3u8)['"]/) ||
+        html.match(/['"](https?:\/\/[^'"]+\.m3u8[^'"]*)['"]/) 
       if (directMatch) return { m3u8: directMatch[1], referer: kwikUrl }
 
       const packedMatch = html.match(/'([^']{50,})'\.split\('\|'\)/)
