@@ -37,6 +37,49 @@ interface AnimePaheVideoSource {
   audio: string | null
 }
 
+function encodePackerToken(value: number, radix: number): string {
+  if (value < radix) {
+    return value > 35 ? String.fromCharCode(value + 29) : value.toString(36)
+  }
+  return `${encodePackerToken(Math.floor(value / radix), radix)}${encodePackerToken(value % radix, radix)}`
+}
+
+function unpackPackerScripts(html: string): string[] {
+  const packedScriptPattern =
+    /\}\('((?:\\.|[^'])*)',(\d+),(\d+),'((?:\\.|[^'])*)'\.split\('\|'\)/g
+  const scripts: string[] = []
+  let match: RegExpExecArray | null
+
+  while ((match = packedScriptPattern.exec(html))) {
+    const payload = match[1].replace(/\\'/g, "'").replace(/\\\\/g, '\\')
+    const radix = Number(match[2])
+    const count = Number(match[3])
+    const dictionary = match[4].split('|')
+    const replacements = new Map<string, string>()
+
+    for (let index = 0; index < count; index++) {
+      const token = encodePackerToken(index, radix)
+      replacements.set(token, dictionary[index] || token)
+    }
+
+    scripts.push(payload.replace(/\b\w+\b/g, (token) => replacements.get(token) || token))
+  }
+
+  return scripts
+}
+
+function extractHlsUrl(html: string): string | null {
+  const directMatch = html.match(/https?:\/\/[^'"\s]+\.m3u8[^'"\s]*/i)
+  if (directMatch) return directMatch[0]
+
+  for (const script of unpackPackerScripts(html)) {
+    const unpackedMatch = script.match(/https?:\/\/[^'"\s]+\.m3u8[^'"\s]*/i)
+    if (unpackedMatch) return unpackedMatch[0]
+  }
+
+  return null
+}
+
 export class AnimePaheProvider implements Provider {
   name = 'AnimePahe'
   private base = 'https://animepahe.pw'
@@ -223,9 +266,7 @@ export class AnimePaheProvider implements Provider {
       if (!epSession) return null
 
       const sources = await this.getSources(showId, epSession)
-      const videoSources: VideoSource[] = []
-
-      for (const src of sources) {
+      const matchingSources = sources.filter((src) => {
         const audio = (src.audio || '').trim().toLowerCase()
         const sourceMode =
           audio.includes('eng') || audio.includes('dub')
@@ -234,26 +275,38 @@ export class AnimePaheProvider implements Provider {
               ? 'sub'
               : null
 
-        if (sourceMode !== mode) continue
+        return sourceMode === mode
+      })
 
-        const label = src.fansub
-          ? `${src.quality || 'Auto'} - ${src.fansub} (${sourceMode.toUpperCase()})`
-          : `${src.quality || 'Auto'} (${sourceMode.toUpperCase()})`
+      const resolvedSources = await Promise.all(
+        matchingSources.map(async (src): Promise<VideoSource | null> => {
+          const resolved = await this.resolveKwik(src.url)
+          if (!resolved.m3u8) return null
 
-        videoSources.push({
-          sourceName: label,
-          links: [
-            {
-              resolutionStr: src.quality || 'Auto',
-              link: src.url,
-              hls: false,
-            },
-          ],
-          type: 'iframe',
-          actualEpisodeNumber: episodeNumber,
+          const sourceMode = mode.toUpperCase()
+          const label = src.fansub
+            ? `${src.quality || 'Auto'} - ${src.fansub} (${sourceMode})`
+            : `${src.quality || 'Auto'} (${sourceMode})`
+
+          return {
+            sourceName: label,
+            links: [
+              {
+                resolutionStr: src.quality || 'Auto',
+                link: resolved.m3u8,
+                hls: true,
+                headers: { Referer: resolved.referer },
+              },
+            ],
+            type: 'player',
+            actualEpisodeNumber: episodeNumber,
+          }
         })
-      }
+      )
 
+      const videoSources = resolvedSources.filter(
+        (source): source is VideoSource => source !== null
+      )
       return videoSources.length > 0 ? videoSources : null
     } catch {
       return null
@@ -298,14 +351,21 @@ export class AnimePaheProvider implements Provider {
   }
 
   async resolveKwik(kwikUrl: string): Promise<{ m3u8: string; referer: string }> {
+    const cacheKey = `animepahe_kwik_${kwikUrl}`
+    const cached = this.cache.get<{ m3u8: string; referer: string }>(cacheKey)
+    if (cached) return cached
+
     try {
-      const fetchUrl = kwikUrl.replace('/e/', '/f/')
-      const response = await fetch(fetchUrl, {
+      const response = await fetch(kwikUrl, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
           Referer: 'https://animepahe.pw/',
         },
       })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
 
       const html = await response.text()
 
@@ -313,22 +373,14 @@ export class AnimePaheProvider implements Provider {
         throw new Error('Kwik triggered a Cloudflare challenge.')
       }
 
-      const directMatch = html.match(/(?:source|file)\s*:\s*['"]([^'"]+\.m3u8)['"]/)
-      if (directMatch) return { m3u8: directMatch[1], referer: kwikUrl }
-
-      const packedMatch = html.match(/'([^']{50,})'\.split\('\|'\)/)
-      if (packedMatch) {
-        const parts = packedMatch[1].split('|')
-        const hash = parts.find((p) => p.length === 64 && /^[a-f0-9]+$/.test(p))
-        const domain = parts.find((p) => p.includes('owocdn'))
-
-        if (hash) {
-          const cdn = domain || 'na.owocdn.top'
-          return { m3u8: `https://${cdn}/stream/01/${hash}/uwu.m3u8`, referer: kwikUrl }
-        }
+      const m3u8 = extractHlsUrl(html)
+      if (m3u8) {
+        const result = { m3u8, referer: kwikUrl }
+        this.cache.set(cacheKey, result, 900)
+        return result
       }
 
-      throw new Error('Could not regex m3u8 link from Kwik HTML')
+      throw new Error('Could not find HLS source in Kwik HTML')
     } catch (err) {
       const error = err as Error
       logger.error({ err: error.message }, 'Kwik Resolve failed')
