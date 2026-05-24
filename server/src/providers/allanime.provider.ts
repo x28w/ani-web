@@ -493,7 +493,7 @@ export class AllAnimeProvider implements Provider {
     const response = await axios.post(
       API_ENDPOINT,
       {
-        query: `query($showId: String!) { show(_id: $showId) { _id, name, thumbnail, banner, description, nativeName, englishName, type, availableEpisodesDetail, score, isAdult } }`,
+        query: `query($showId: String!) { show(_id: $showId) { _id, name, thumbnail, banner, description, nativeName, englishName, type, availableEpisodesDetail, score, isAdult, genres } }`,
         variables: { showId },
       },
       {
@@ -519,6 +519,9 @@ export class AllAnimeProvider implements Provider {
         availableEpisodesDetail: show.availableEpisodesDetail,
         score: show.score,
         isAdult: show.isAdult,
+        genres: Array.isArray(show.genres)
+          ? show.genres.map((genre: string) => ({ name: genre }))
+          : undefined,
       }
     }
     return null

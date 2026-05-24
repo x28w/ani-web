@@ -309,10 +309,25 @@ class WatchlistController {
         req.db.scheduleSave();
         res.json({ success: true });
     });
+    recordWatchTime = (0, async_handler_1.asyncHandler)(async (req, res) => {
+        const { showId, episodeNumber } = req.body;
+        const seconds = Number(req.body?.seconds);
+        if (!showId || !episodeNumber || !Number.isFinite(seconds) || seconds <= 0 || seconds > 30) {
+            res.status(400).json({ error: 'A valid episode and watch interval are required' });
+            return;
+        }
+        await (0, sync_1.performWriteTransaction)(req.db, (tx) => {
+            watched_episodes_repository_1.WatchedEpisodesRepository.addWatchTime(tx, this.getProgressUserId(req), showId, episodeNumber, Math.round(seconds));
+        });
+        req.db.scheduleSave();
+        res.json({ success: true });
+    });
     removeContinueWatching = (0, async_handler_1.asyncHandler)(async (req, res) => {
         const { showId } = req.body;
         await (0, sync_1.performWriteTransaction)(req.db, (tx) => {
-            watched_episodes_repository_1.WatchedEpisodesRepository.deleteByShow(tx, this.getProgressUserId(req), showId);
+            const userId = this.getProgressUserId(req);
+            watched_episodes_repository_1.WatchedEpisodesRepository.deleteByShow(tx, userId, showId);
+            watched_episodes_repository_1.WatchedEpisodesRepository.deleteActivityByShow(tx, userId, showId);
         });
         res.json({ success: true });
     });
@@ -434,6 +449,7 @@ class WatchlistController {
         await (0, sync_1.performWriteTransaction)(req.db, (tx) => {
             watchlist_repository_1.WatchlistRepository.delete(tx, id);
             watched_episodes_repository_1.WatchedEpisodesRepository.deleteAllByShow(tx, id);
+            watched_episodes_repository_1.WatchedEpisodesRepository.deleteAllActivityByShow(tx, id);
             notifications_repository_1.NotificationsRepository.deleteByShow(tx, id);
         });
         res.json({ success: true });

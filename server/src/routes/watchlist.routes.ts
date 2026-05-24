@@ -12,6 +12,7 @@ export function createWatchlistRouter(provider: AllAnimeProvider): Router {
   router.get('/continue-watching/all', controller.getAllContinueWatching)
   router.post('/continue-watching/remove', controller.removeContinueWatching)
   router.post('/update-progress', controller.updateProgress)
+  router.post('/record-watch-time', controller.recordWatchTime)
   router.get('/watchlist', controller.getWatchlist)
   router.get('/watchlist/check/:showId', controller.checkWatchlist)
   router.post('/watchlist/add', controller.addToWatchlist)

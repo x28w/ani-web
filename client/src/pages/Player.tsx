@@ -27,6 +27,7 @@ const ensureHttpProtocol = (url: string): string => {
 }
 
 const TWO_EMBED_SEASON_KEY_PREFIX = 'ani-web:2embed-season:'
+const IFRAME_WATCH_INTERVAL_MS = 15000
 
 const readTwoEmbedSeasonOverride = (showId: string | undefined): number | undefined => {
   if (!showId) return undefined
@@ -165,6 +166,53 @@ const Player: React.FC = () => {
     state.resumeDuration,
     recordEpisodeProgress,
   ])
+
+  useEffect(() => {
+    if (
+      !showId ||
+      !state.currentEpisode ||
+      state.loadingVideo ||
+      state.selectedSource?.type !== 'iframe'
+    ) {
+      return
+    }
+
+    let lastTick = Date.now()
+    const recordVisibleWatchTime = () => {
+      const now = Date.now()
+      const elapsedSeconds = Math.min(30, Math.round((now - lastTick) / 1000))
+      lastTick = now
+
+      if (document.visibilityState !== 'visible' || elapsedSeconds <= 0) return
+
+      fetch('/api/record-watch-time', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          showId,
+          episodeNumber: state.currentEpisode,
+          seconds: elapsedSeconds,
+        }),
+        keepalive: true,
+      }).catch(() => {})
+    }
+
+    const intervalId = window.setInterval(recordVisibleWatchTime, IFRAME_WATCH_INTERVAL_MS)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        recordVisibleWatchTime()
+      } else {
+        lastTick = Date.now()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      window.clearInterval(intervalId)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      recordVisibleWatchTime()
+    }
+  }, [showId, state.currentEpisode, state.loadingVideo, state.selectedSource?.type])
 
   const [skipIndicator, setSkipIndicator] = useState<{
     side: 'left' | 'right'

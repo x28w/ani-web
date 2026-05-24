@@ -120,10 +120,11 @@ function migrateWatchedEpisodesForUsers(db, initOpts) {
       watchedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       currentTime REAL DEFAULT 0,
       duration REAL DEFAULT 0,
+      watchedSeconds REAL DEFAULT 0,
       PRIMARY KEY (userId, showId, episodeNumber)
     )`, undefined, undefined, initOpts);
-    db.run(`INSERT OR REPLACE INTO watched_episodes_new (userId, showId, episodeNumber, watchedAt, currentTime, duration)
-     SELECT '${defaultUserId}', showId, episodeNumber, watchedAt, currentTime, duration FROM watched_episodes`, undefined, undefined, initOpts);
+    db.run(`INSERT OR REPLACE INTO watched_episodes_new (userId, showId, episodeNumber, watchedAt, currentTime, duration, watchedSeconds)
+     SELECT '${defaultUserId}', showId, episodeNumber, watchedAt, currentTime, duration, currentTime FROM watched_episodes`, undefined, undefined, initOpts);
     db.run('DROP TABLE watched_episodes', undefined, undefined, initOpts);
     db.run('ALTER TABLE watched_episodes_new RENAME TO watched_episodes', undefined, undefined, initOpts);
 }
@@ -435,8 +436,41 @@ async function initializeDatabase(dbPath) {
         db.run('PRAGMA foreign_keys = ON;');
         const initOpts = { skipSave: true };
         db.run(`CREATE TABLE IF NOT EXISTS watchlist (id TEXT NOT NULL, name TEXT, thumbnail TEXT, status TEXT, nativeName TEXT, englishName TEXT, type TEXT, PRIMARY KEY (id))`, undefined, undefined, initOpts);
-        db.run(`CREATE TABLE IF NOT EXISTS watched_episodes (userId TEXT NOT NULL DEFAULT 'local', showId TEXT NOT NULL, episodeNumber TEXT NOT NULL, watchedAt DATETIME DEFAULT CURRENT_TIMESTAMP, currentTime REAL DEFAULT 0, duration REAL DEFAULT 0, PRIMARY KEY (userId, showId, episodeNumber))`, undefined, undefined, initOpts);
+        db.run(`CREATE TABLE IF NOT EXISTS watched_episodes (userId TEXT NOT NULL DEFAULT 'local', showId TEXT NOT NULL, episodeNumber TEXT NOT NULL, watchedAt DATETIME DEFAULT CURRENT_TIMESTAMP, currentTime REAL DEFAULT 0, duration REAL DEFAULT 0, watchedSeconds REAL DEFAULT 0, PRIMARY KEY (userId, showId, episodeNumber))`, undefined, undefined, initOpts);
         migrateWatchedEpisodesForUsers(db, initOpts);
+        if (!getTableColumns(db, 'watched_episodes').includes('watchedSeconds')) {
+            db.run('ALTER TABLE watched_episodes ADD COLUMN watchedSeconds REAL DEFAULT 0', undefined, undefined, initOpts);
+            // Existing playback positions are the best historical estimate available.
+            db.run('UPDATE watched_episodes SET watchedSeconds = currentTime WHERE currentTime > 0', undefined, undefined, initOpts);
+        }
+        db.run(`CREATE TABLE IF NOT EXISTS watch_activity (
+        userId TEXT NOT NULL,
+        showId TEXT NOT NULL,
+        day TEXT NOT NULL,
+        seconds REAL DEFAULT 0,
+        PRIMARY KEY (userId, showId, day)
+      )`, undefined, undefined, initOpts);
+        db.run(`INSERT OR IGNORE INTO watch_activity (userId, showId, day, seconds)
+       SELECT userId, showId, date(watchedAt), SUM(watchedSeconds)
+       FROM watched_episodes
+       WHERE watchedSeconds > 0
+       GROUP BY userId, showId, date(watchedAt)`, undefined, undefined, initOpts);
+        db.run(`CREATE TRIGGER IF NOT EXISTS watched_episodes_activity_insert
+       AFTER INSERT ON watched_episodes
+       WHEN NEW.watchedSeconds > 0
+       BEGIN
+         INSERT INTO watch_activity (userId, showId, day, seconds)
+         VALUES (NEW.userId, NEW.showId, date('now'), NEW.watchedSeconds)
+         ON CONFLICT(userId, showId, day) DO UPDATE SET seconds = seconds + excluded.seconds;
+       END`, undefined, undefined, initOpts);
+        db.run(`CREATE TRIGGER IF NOT EXISTS watched_episodes_activity_update
+       AFTER UPDATE OF watchedSeconds ON watched_episodes
+       WHEN NEW.watchedSeconds > OLD.watchedSeconds
+       BEGIN
+         INSERT INTO watch_activity (userId, showId, day, seconds)
+         VALUES (NEW.userId, NEW.showId, date('now'), NEW.watchedSeconds - OLD.watchedSeconds)
+         ON CONFLICT(userId, showId, day) DO UPDATE SET seconds = seconds + excluded.seconds;
+       END`, undefined, undefined, initOpts);
         db.run(`CREATE TABLE IF NOT EXISTS settings (key TEXT NOT NULL, value TEXT, PRIMARY KEY (key))`, undefined, undefined, initOpts);
         db.run(`CREATE TABLE IF NOT EXISTS shows_meta (id TEXT PRIMARY KEY, name TEXT, thumbnail TEXT, nativeName TEXT, englishName TEXT, episodeCount INTEGER, status TEXT, genres TEXT, popularityScore INTEGER, type TEXT)`, undefined, undefined, initOpts);
         db.run(`CREATE TABLE IF NOT EXISTS dismissed_notifications (showId TEXT NOT NULL, episodeNumber TEXT NOT NULL, dismissedAt DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (showId, episodeNumber))`, undefined, undefined, initOpts);

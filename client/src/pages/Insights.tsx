@@ -1,412 +1,222 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import {
-  FaClock,
-  FaCheckCircle,
-  FaLayerGroup,
-  FaFire,
-  FaUserAstronaut,
-  FaHistory,
-  FaExclamationTriangle,
-} from 'react-icons/fa'
+import { Link } from 'react-router-dom'
+import { FaCalendarAlt, FaClock, FaFilm, FaPlayCircle } from 'react-icons/fa'
+import AnimeSection from '../components/anime/AnimeSection'
+import { useTitlePreference } from '../contexts/TitlePreferenceContext'
+import { fixThumbnailUrl } from '../lib/utils'
 import styles from './Insights.module.css'
 
-interface GenreStat {
+interface MostWatchedTitle {
+  id: string
   name: string
-  count: number
+  nativeName?: string
+  englishName?: string
+  thumbnail?: string
+  type?: string
+  watchedSeconds: number
+  episodesWatched: number
+}
+
+interface FavoriteGenre {
+  name: string
+  seconds: number
 }
 
 interface ActivityDay {
   day: string
-  count: number
-}
-
-interface HourlyStat {
-  hour: string
-  count: number
-}
-
-interface SeasonalStat {
-  month: string
   seconds: number
 }
 
-interface DroppedShow {
-  id: string
+interface RecommendedAnime {
+  _id: string
+  id?: string
   name: string
-  lastActivity: string
+  nativeName?: string
+  englishName?: string
+  thumbnail?: string
+  type?: string
+  availableEpisodesDetail?: {
+    sub?: string[]
+    dub?: string[]
+  }
 }
 
 interface InsightData {
-  totalHours: number
+  totalSeconds: number
   totalEpisodes: number
-  completedAnime: number
-  completionRate: number
-  persona: string
-  bingeFactor: number
-  avgSessionMinutes: number
-  avgCompletionDays: number
-  popularityScore: number
-  genreSplit: GenreStat[]
-  activityGrid: ActivityDay[]
-  hourlyDist: HourlyStat[]
-  seasonality: SeasonalStat[]
-  droppedShows: DroppedShow[]
+  titlesWatched: number
+  activeDays: number
+  mostWatched: MostWatchedTitle[]
+  favoriteGenres: FavoriteGenre[]
+  activity: ActivityDay[]
+  recommendations: RecommendedAnime[]
+}
+
+const formatWatchTime = (seconds: number) => {
+  const roundedMinutes = Math.round(seconds / 60)
+  const hours = Math.floor(roundedMinutes / 60)
+  const minutes = roundedMinutes % 60
+
+  if (hours === 0) return `${minutes}m`
+  return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`
 }
 
 const Insights: React.FC = () => {
+  const { titlePreference } = useTitlePreference()
   const { data, isLoading, isError } = useQuery<InsightData>({
     queryKey: ['insights'],
     queryFn: async () => {
-      const res = await fetch('/api/insights')
-      if (!res.ok) throw new Error('Failed to fetch insights')
-      return res.json()
+      const response = await fetch('/api/insights')
+      if (!response.ok) throw new Error('Failed to fetch insights')
+      return response.json()
     },
   })
 
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
+  useEffect(() => {
+    document.title = 'Insights - ani-web'
+  }, [])
 
-  const availableYears = useMemo(() => {
-    if (!data?.activityGrid) return [new Date().getFullYear()]
-    const years = new Set(data.activityGrid.map((d) => parseInt(d.day.split('-')[0])))
-    years.add(new Date().getFullYear())
-    return Array.from(years).sort((a, b) => b - a)
-  }, [data])
+  const recentActivity = useMemo(() => {
+    const values = new Map((data?.activity || []).map((day) => [day.day, day.seconds]))
+    return Array.from({ length: 14 }, (_, offset) => {
+      const date = new Date()
+      date.setDate(date.getDate() - (13 - offset))
+      const key = date.toISOString().slice(0, 10)
+      return { day: key, seconds: values.get(key) || 0 }
+    })
+  }, [data?.activity])
 
-  const heatmapData = useMemo(() => {
-    if (!data?.activityGrid) return []
-    const daysMap = new Map(data.activityGrid.map((d) => [d.day, d.count]))
-    const result = []
-
-    const startDate = new Date(selectedYear, 0, 1)
-    const endDate = new Date(selectedYear, 11, 31)
-
-    const startOffset = startDate.getDay()
-    const current = new Date(startDate)
-    current.setDate(current.getDate() - startOffset)
-
-    while (current <= endDate || current.getDay() !== 0) {
-      if (current > endDate && current.getDay() === 0) break
-
-      const year = current.getFullYear()
-      const month = String(current.getMonth() + 1).padStart(2, '0')
-      const day = String(current.getDate()).padStart(2, '0')
-      const dateStr = `${year}-${month}-${day}`
-
-      const isOutOfRange = current < startDate || current > endDate
-
-      result.push({
-        date: dateStr,
-        count: isOutOfRange ? 0 : daysMap.get(dateStr) || 0,
-        month: current.getMonth(),
-        isOutOfRange,
-      })
-      current.setDate(current.getDate() + 1)
-    }
-    return result
-  }, [data, selectedYear])
-
-  const maxSeasonal = useMemo(() => {
-    if (!data?.seasonality?.length) return 0
-    return Math.max(...data.seasonality.map((s) => s.seconds), 1)
-  }, [data])
-
-  const maxHourly = useMemo(() => {
-    if (!data?.hourlyDist?.length) return 0
-    return Math.max(...data.hourlyDist.map((h) => h.count), 1)
-  }, [data])
-
-  if (isLoading) return <div className={styles.loading}>Analyzing your anime lifestyle...</div>
-  if (isError)
-    return <div className={styles.error}>Could not load insights. Data might be syncing.</div>
+  if (isLoading) return <div className={styles.loading}>Loading watch insights...</div>
+  if (isError) return <div className={styles.error}>Could not load watch insights.</div>
   if (!data) return null
 
+  const maxWatched = data.mostWatched[0]?.watchedSeconds || 1
+  const maxGenre = data.favoriteGenres[0]?.seconds || 1
+  const maxActivity = Math.max(...recentActivity.map((day) => day.seconds), 1)
+  const recommendationTitle = data.favoriteGenres[0]
+    ? `Recommended: ${data.favoriteGenres[0].name}`
+    : 'Recommended For You'
+  const recommendationCards = data.recommendations.map((anime) => ({
+    ...anime,
+    id: anime.id || anime._id,
+    thumbnail: anime.thumbnail || '',
+  }))
+  const stats = [
+    { label: 'Watch Time', value: formatWatchTime(data.totalSeconds), icon: <FaClock /> },
+    { label: 'Episodes Played', value: String(data.totalEpisodes), icon: <FaPlayCircle /> },
+    { label: 'Titles Watched', value: String(data.titlesWatched), icon: <FaFilm /> },
+    { label: 'Active Days', value: String(data.activeDays), icon: <FaCalendarAlt /> },
+  ]
+
   return (
-    <div className="page-container">
-      <div className={styles.header}>
-        <h2 className="section-title">Watch Insights</h2>
-        <div className={styles.personaBadge}>
-          <FaUserAstronaut />
-          <div className={styles.personaInfo}>
-            <span className={styles.personaLabel}>Your Persona</span>
-            <span className={styles.personaValue}>{data.persona}</span>
-          </div>
-        </div>
-      </div>
+    <div className={`page-container ${styles.page}`}>
+      <h2 className="section-title">Watch Insights</h2>
 
       <div className={styles.statsGrid}>
-        <div className={styles.statCard}>
-          <div
-            className={styles.statIcon}
-            style={{ background: 'rgba(138, 79, 255, 0.2)', color: 'var(--accent)' }}
-          >
-            <FaClock />
+        {stats.map((stat) => (
+          <div className={styles.statCard} key={stat.label}>
+            <span className={styles.statIcon}>{stat.icon}</span>
+            <div>
+              <div className={styles.statValue}>{stat.value}</div>
+              <div className={styles.statLabel}>{stat.label}</div>
+            </div>
           </div>
-          <div className={styles.statInfo}>
-            <span className={styles.statValue}>{data.totalHours}h</span>
-            <span className={styles.statLabel}>Watch Time</span>
-          </div>
-        </div>
-
-        <div className={styles.statCard}>
-          <div
-            className={styles.statIcon}
-            style={{ background: 'rgba(34, 197, 94, 0.2)', color: '#22c55e' }}
-          >
-            <FaCheckCircle />
-          </div>
-          <div className={styles.statInfo}>
-            <span className={styles.statValue}>{data.completionRate}%</span>
-            <span className={styles.statLabel}>Completion Rate</span>
-          </div>
-        </div>
-
-        <div className={styles.statCard}>
-          <div
-            className={styles.statIcon}
-            style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#ef4444' }}
-          >
-            <FaFire />
-          </div>
-          <div className={styles.statInfo}>
-            <span className={styles.statValue}>{data.bingeFactor}</span>
-            <span className={styles.statLabel}>Max Daily Binge</span>
-          </div>
-        </div>
-
-        <div className={styles.statCard}>
-          <div
-            className={styles.statIcon}
-            style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#3b82f6' }}
-          >
-            <FaHistory />
-          </div>
-          <div className={styles.statInfo}>
-            <span className={styles.statValue}>{data.avgSessionMinutes}m</span>
-            <span className={styles.statLabel}>Avg. Session</span>
-          </div>
-        </div>
-
-        <div className={styles.statCard}>
-          <div
-            className={styles.statIcon}
-            style={{ background: 'rgba(251, 191, 36, 0.2)', color: '#fbbf24' }}
-          >
-            <FaLayerGroup />
-          </div>
-          <div className={styles.statInfo}>
-            <span className={styles.statValue}>{data.avgCompletionDays}d</span>
-            <span className={styles.statLabel}>Avg. Speed</span>
-          </div>
-        </div>
+        ))}
       </div>
 
-      <div className={styles.wideSection}>
-        <div className={styles.sectionHeader}>
-          <h3>Activity</h3>
-          <select
-            className={styles.yearSelect}
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(Number(e.currentTarget.value))}
-          >
-            {availableYears.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
+      {data.mostWatched.length === 0 ? (
+        <div className={styles.emptyState}>
+          <FaPlayCircle />
+          <h3>No watch history yet</h3>
+          <p>Start an episode and your insights will appear here.</p>
         </div>
-        <div className={styles.heatmapLayout}>
-          <div className={styles.dayLabels}>
-            <span style={{ gridRow: 2 }}>Mon</span>
-            <span style={{ gridRow: 4 }}>Wed</span>
-            <span style={{ gridRow: 6 }}>Fri</span>
-          </div>
-          <div className={styles.heatmapWrapper}>
-            <div className={styles.heatmapMonthLabels}>
-              {(() => {
-                const labels: React.ReactElement[] = []
-                let lastMonth = -1
-                heatmapData.forEach((d, i) => {
-                  if (d.month !== lastMonth && !d.isOutOfRange) {
-                    const weekIdx = Math.floor(i / 7) + 1
-                    // Only add label if it's at least 2 weeks after the previous label to avoid overlap
-                    if (
-                      weekIdx >
-                      (labels.length > 0
-                        ? (labels[labels.length - 1].props.style.gridColumn as number) + 2
-                        : -1)
-                    ) {
-                      labels.push(
-                        <span
-                          key={i}
-                          style={{
-                            gridColumn: weekIdx,
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {new Date(0, d.month).toLocaleString('default', { month: 'short' })}
+      ) : (
+        <>
+          <div className={styles.contentGrid}>
+            <section className={styles.section}>
+              <h3 className={styles.heading}>Most Watched</h3>
+              <div className={styles.watchList}>
+                {data.mostWatched.map((title, index) => {
+                  const displayTitle =
+                    title[titlePreference as keyof MostWatchedTitle] || title.name
+                  const label = typeof displayTitle === 'string' ? displayTitle : title.name
+                  return (
+                    <Link to={`/anime/${title.id}`} className={styles.watchRow} key={title.id}>
+                      <span className={styles.rank}>{String(index + 1).padStart(2, '0')}</span>
+                      <img
+                        className={styles.poster}
+                        src={fixThumbnailUrl(title.thumbnail, 72, 100)}
+                        alt=""
+                        loading="lazy"
+                      />
+                      <div className={styles.watchInfo}>
+                        <span className={styles.title}>{label}</span>
+                        <span className={styles.detail}>
+                          {title.episodesWatched} episodes / {formatWatchTime(title.watchedSeconds)}
                         </span>
-                      )
-                      lastMonth = d.month
-                    }
-                  }
-                })
-                return labels
-              })()}
-            </div>
-            <div className={styles.heatmapGrid}>
-              {heatmapData.map((d, i) => {
-                let level = 0
-                if (d.count > 0 && !d.isOutOfRange) level = 1
-                if (d.count > 2 && !d.isOutOfRange) level = 2
-                if (d.count > 5 && !d.isOutOfRange) level = 3
-                if (d.count > 10 && !d.isOutOfRange) level = 4
+                        <span className={styles.barTrack} aria-hidden="true">
+                          <span
+                            className={styles.barFill}
+                            style={{ width: `${(title.watchedSeconds / maxWatched) * 100}%` }}
+                          />
+                        </span>
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            </section>
 
-                return (
-                  <div
-                    key={i}
-                    className={`${styles.heatBox} ${styles[`level${level}`]} ${d.isOutOfRange ? styles.hiddenBox : ''}`}
-                    title={d.isOutOfRange ? '' : `${d.count} episodes on ${d.date}`}
-                  />
-                )
-              })}
-            </div>
-            <div className={styles.heatmapFooter}>
-              <div className={styles.heatLegend}>
-                <span>Less</span>
-                <div className={`${styles.heatBox} ${styles.level0}`} />
-                <div className={`${styles.heatBox} ${styles.level1}`} />
-                <div className={`${styles.heatBox} ${styles.level2}`} />
-                <div className={`${styles.heatBox} ${styles.level3}`} />
-                <div className={`${styles.heatBox} ${styles.level4}`} />
-                <span>More</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+            <div className={styles.sideColumn}>
+              {data.favoriteGenres.length > 0 && (
+                <section className={styles.section}>
+                  <h3 className={styles.heading}>Top Genres</h3>
+                  <div className={styles.genreList}>
+                    {data.favoriteGenres.map((genre) => (
+                      <div className={styles.genreRow} key={genre.name}>
+                        <div className={styles.genreHeader}>
+                          <span>{genre.name}</span>
+                          <span>{formatWatchTime(genre.seconds)}</span>
+                        </div>
+                        <span className={styles.genreTrack} aria-hidden="true">
+                          <span
+                            className={styles.genreFill}
+                            style={{ width: `${(genre.seconds / maxGenre) * 100}%` }}
+                          />
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
 
-      <div className={styles.chartsContainer}>
-        <div className={styles.chartWrapper}>
-          <h3>Time Distribution (24h)</h3>
-          <div className={styles.hourlyChart}>
-            {data.hourlyDist?.map((h, i) => (
-              <div key={i} className={styles.hourlyBarContainer}>
-                <div
-                  className={styles.hourlyBar}
-                  style={{
-                    height: `${(h.count / maxHourly) * 100 || 2}%`,
-                    width: '100%',
-                    maxWidth: '12px',
-                  }}
-                  title={`${h.count} watches at ${h.hour}:00`}
-                />
-                <span
-                  className={styles.hourlyLabel}
-                  style={{ visibility: i % 4 === 0 ? 'visible' : 'hidden' }}
-                >
-                  {h.hour}
-                </span>
-              </div>
-            ))}
-          </div>
-          <div className={styles.chartSubtext}>
-            {(() => {
-              if (!data.hourlyDist?.length) {
-                return 'Watch more to see your peak hours!'
-              }
-              const peakHour = parseInt(
-                [...data.hourlyDist].sort((a, b) => b.count - a.count)[0].hour
-              )
-              return peakHour >= 6 && peakHour < 19
-                ? 'You prefer daytime watching ☀️'
-                : "You're a confirmed Night Owl 🦉"
-            })()}
-          </div>
-        </div>
-        <div className={styles.chartWrapper}>
-          <h3>Popularity Bias</h3>
-          <div className={styles.popScale}>
-            <div className={styles.popTrack}>
-              <div
-                className={styles.popThumb}
-                style={{ left: `${Math.max(0, Math.min(100, 100 - data.popularityScore * 10))}%` }}
-              />
-            </div>
-            <div className={styles.popLabels}>
-              <span>Mainstream</span>
-              <span>Underground</span>
+              <section className={styles.section}>
+                <h3 className={styles.heading}>Last 14 Days</h3>
+                <div className={styles.activityChart}>
+                  {recentActivity.map((day) => (
+                    <span className={styles.activityColumn} key={day.day}>
+                      <span
+                        className={styles.activityBar}
+                        style={{ height: `${Math.max((day.seconds / maxActivity) * 100, 3)}%` }}
+                        title={`${formatWatchTime(day.seconds)} on ${day.day}`}
+                      />
+                      <span className={styles.activityLabel}>
+                        {new Date(`${day.day}T12:00:00`).toLocaleDateString(undefined, {
+                          weekday: 'short',
+                        })}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              </section>
             </div>
           </div>
-          <p className={styles.popDescription}>
-            Your taste score is <strong>{data.popularityScore}/10</strong>.
-            {data.popularityScore >= 5
-              ? ' You follow the big hits!'
-              : " You're a connoisseur of the obscure!"}
-          </p>
-        </div>
-        <div className={styles.chartWrapper}>
-          <h3>Monthly Activity</h3>
-          <div className={styles.seasonalChart}>
-            {data.seasonality?.map((s, i) => (
-              <div key={i} className={styles.seasonalBarContainer}>
-                <div
-                  className={styles.seasonalBar}
-                  style={{
-                    height: `${(s.seconds / maxSeasonal) * 100 || 5}%`,
-                    width: '100%',
-                    maxWidth: '24px',
-                  }}
-                  title={`${Math.round(s.seconds / 3600)}h in ${new Date(0, i).toLocaleString('default', { month: 'long' })}`}
-                />
-                <span className={styles.seasonalLabel}>
-                  {new Date(0, i).toLocaleString('default', { month: 'short' })}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className={styles.chartWrapper}>
-          <h3>Genre Dominance</h3>
-          <div className={styles.genreList}>
-            {data.genreSplit?.map((g, i) => (
-              <div key={i} className={styles.genreRow}>
-                <div className={styles.genreInfo}>
-                  <span className={styles.genreName}>{g.name}</span>
-                  <span className={styles.genreCount}>{g.count} titles</span>
-                </div>
-                <div className={styles.genreBarBg}>
-                  <div
-                    className={styles.genreBar}
-                    style={{
-                      width: `${(g.count / (data.genreSplit[0]?.count || 1)) * 100}%`,
-                      backgroundColor: `hsl(${265 - i * 15}, 70%, 65%)`,
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-      {data.droppedShows?.length > 0 && (
-        <div className={styles.warningSection}>
-          <div className={styles.warningHeader}>
-            <FaExclamationTriangle />
-            <h3>Dusty Watchlist (Inactive 90+ days)</h3>
-          </div>
-          <div className={styles.droppedGrid}>
-            {data.droppedShows.map((show) => (
-              <div key={show.id} className={styles.droppedCard}>
-                <span className={styles.droppedName}>{show.name}</span>
-                <span className={styles.droppedDate}>
-                  Last watched: {new Date(show.lastActivity).toLocaleDateString()}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+
+          {recommendationCards.length > 0 && (
+            <AnimeSection title={recommendationTitle} animeList={recommendationCards} carousel />
+          )}
+        </>
       )}
     </div>
   )

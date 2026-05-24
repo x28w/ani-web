@@ -52,6 +52,7 @@ const GITHUB_API_HEADERS = {
 const SYNC_TABLES = [
     'watchlist',
     'watched_episodes',
+    'watch_activity',
     'settings',
     'shows_meta',
     'sync_metadata',
@@ -97,7 +98,10 @@ function normalizePayload(input) {
     }
     const payload = input;
     for (const table of SYNC_TABLES) {
-        if (!Array.isArray(payload.tables?.[table])) {
+        if (table === 'watch_activity' && !Array.isArray(payload.tables?.[table])) {
+            payload.tables.watch_activity = [];
+        }
+        else if (!Array.isArray(payload.tables?.[table])) {
             throw new Error(`Invalid GitHub sync payload: missing ${table}.`);
         }
     }
@@ -321,6 +325,8 @@ class GitHubSyncService {
     }
     importDatabase(db, payload) {
         db.serialize(() => {
+            db.run('DROP TRIGGER IF EXISTS watched_episodes_activity_insert');
+            db.run('DROP TRIGGER IF EXISTS watched_episodes_activity_update');
             for (const table of SYNC_TABLES) {
                 db.run(`DELETE FROM ${quoteIdentifier(table)}`);
             }
@@ -335,6 +341,30 @@ class GitHubSyncService {
                     db.run(`INSERT INTO ${quoteIdentifier(table)} (${columnSql}) VALUES (${placeholders})`, values);
                 }
             }
+            if (payload.tables.watched_episodes.some((row) => !('watchedSeconds' in row))) {
+                db.run('UPDATE watched_episodes SET watchedSeconds = currentTime WHERE watchedSeconds = 0 AND currentTime > 0');
+            }
+            db.run(`INSERT OR IGNORE INTO watch_activity (userId, showId, day, seconds)
+         SELECT userId, showId, date(watchedAt), SUM(watchedSeconds)
+         FROM watched_episodes
+         WHERE watchedSeconds > 0
+         GROUP BY userId, showId, date(watchedAt)`);
+            db.run(`CREATE TRIGGER IF NOT EXISTS watched_episodes_activity_insert
+         AFTER INSERT ON watched_episodes
+         WHEN NEW.watchedSeconds > 0
+         BEGIN
+           INSERT INTO watch_activity (userId, showId, day, seconds)
+           VALUES (NEW.userId, NEW.showId, date('now'), NEW.watchedSeconds)
+           ON CONFLICT(userId, showId, day) DO UPDATE SET seconds = seconds + excluded.seconds;
+         END`);
+            db.run(`CREATE TRIGGER IF NOT EXISTS watched_episodes_activity_update
+         AFTER UPDATE OF watchedSeconds ON watched_episodes
+         WHEN NEW.watchedSeconds > OLD.watchedSeconds
+         BEGIN
+           INSERT INTO watch_activity (userId, showId, day, seconds)
+           VALUES (NEW.userId, NEW.showId, date('now'), NEW.watchedSeconds - OLD.watchedSeconds)
+           ON CONFLICT(userId, showId, day) DO UPDATE SET seconds = seconds + excluded.seconds;
+         END`);
         });
     }
 }

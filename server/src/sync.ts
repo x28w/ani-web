@@ -78,6 +78,7 @@ function migrateWatchedEpisodesForUsers(db: DatabaseWrapper, initOpts: { skipSav
       watchedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       currentTime REAL DEFAULT 0,
       duration REAL DEFAULT 0,
+      watchedSeconds REAL DEFAULT 0,
       PRIMARY KEY (userId, showId, episodeNumber)
     )`,
     undefined,
@@ -85,8 +86,8 @@ function migrateWatchedEpisodesForUsers(db: DatabaseWrapper, initOpts: { skipSav
     initOpts
   )
   db.run(
-    `INSERT OR REPLACE INTO watched_episodes_new (userId, showId, episodeNumber, watchedAt, currentTime, duration)
-     SELECT '${defaultUserId}', showId, episodeNumber, watchedAt, currentTime, duration FROM watched_episodes`,
+    `INSERT OR REPLACE INTO watched_episodes_new (userId, showId, episodeNumber, watchedAt, currentTime, duration, watchedSeconds)
+     SELECT '${defaultUserId}', showId, episodeNumber, watchedAt, currentTime, duration, currentTime FROM watched_episodes`,
     undefined,
     undefined,
     initOpts
@@ -474,12 +475,75 @@ export async function initializeDatabase(dbPath: string): Promise<DatabaseWrappe
       initOpts
     )
     db.run(
-      `CREATE TABLE IF NOT EXISTS watched_episodes (userId TEXT NOT NULL DEFAULT 'local', showId TEXT NOT NULL, episodeNumber TEXT NOT NULL, watchedAt DATETIME DEFAULT CURRENT_TIMESTAMP, currentTime REAL DEFAULT 0, duration REAL DEFAULT 0, PRIMARY KEY (userId, showId, episodeNumber))`,
+      `CREATE TABLE IF NOT EXISTS watched_episodes (userId TEXT NOT NULL DEFAULT 'local', showId TEXT NOT NULL, episodeNumber TEXT NOT NULL, watchedAt DATETIME DEFAULT CURRENT_TIMESTAMP, currentTime REAL DEFAULT 0, duration REAL DEFAULT 0, watchedSeconds REAL DEFAULT 0, PRIMARY KEY (userId, showId, episodeNumber))`,
       undefined,
       undefined,
       initOpts
     )
     migrateWatchedEpisodesForUsers(db, initOpts)
+    if (!getTableColumns(db, 'watched_episodes').includes('watchedSeconds')) {
+      db.run(
+        'ALTER TABLE watched_episodes ADD COLUMN watchedSeconds REAL DEFAULT 0',
+        undefined,
+        undefined,
+        initOpts
+      )
+      // Existing playback positions are the best historical estimate available.
+      db.run(
+        'UPDATE watched_episodes SET watchedSeconds = currentTime WHERE currentTime > 0',
+        undefined,
+        undefined,
+        initOpts
+      )
+    }
+    db.run(
+      `CREATE TABLE IF NOT EXISTS watch_activity (
+        userId TEXT NOT NULL,
+        showId TEXT NOT NULL,
+        day TEXT NOT NULL,
+        seconds REAL DEFAULT 0,
+        PRIMARY KEY (userId, showId, day)
+      )`,
+      undefined,
+      undefined,
+      initOpts
+    )
+    db.run(
+      `INSERT OR IGNORE INTO watch_activity (userId, showId, day, seconds)
+       SELECT userId, showId, date(watchedAt), SUM(watchedSeconds)
+       FROM watched_episodes
+       WHERE watchedSeconds > 0
+       GROUP BY userId, showId, date(watchedAt)`,
+      undefined,
+      undefined,
+      initOpts
+    )
+    db.run(
+      `CREATE TRIGGER IF NOT EXISTS watched_episodes_activity_insert
+       AFTER INSERT ON watched_episodes
+       WHEN NEW.watchedSeconds > 0
+       BEGIN
+         INSERT INTO watch_activity (userId, showId, day, seconds)
+         VALUES (NEW.userId, NEW.showId, date('now'), NEW.watchedSeconds)
+         ON CONFLICT(userId, showId, day) DO UPDATE SET seconds = seconds + excluded.seconds;
+       END`,
+      undefined,
+      undefined,
+      initOpts
+    )
+    db.run(
+      `CREATE TRIGGER IF NOT EXISTS watched_episodes_activity_update
+       AFTER UPDATE OF watchedSeconds ON watched_episodes
+       WHEN NEW.watchedSeconds > OLD.watchedSeconds
+       BEGIN
+         INSERT INTO watch_activity (userId, showId, day, seconds)
+         VALUES (NEW.userId, NEW.showId, date('now'), NEW.watchedSeconds - OLD.watchedSeconds)
+         ON CONFLICT(userId, showId, day) DO UPDATE SET seconds = seconds + excluded.seconds;
+       END`,
+      undefined,
+      undefined,
+      initOpts
+    )
     db.run(
       `CREATE TABLE IF NOT EXISTS settings (key TEXT NOT NULL, value TEXT, PRIMARY KEY (key))`,
       undefined,

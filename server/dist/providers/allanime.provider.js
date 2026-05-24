@@ -458,7 +458,7 @@ class AllAnimeProvider {
     }
     async getShowMeta(showId) {
         const response = await axios_1.default.post(API_ENDPOINT, {
-            query: `query($showId: String!) { show(_id: $showId) { _id, name, thumbnail, banner, description, nativeName, englishName, type, availableEpisodesDetail, score, isAdult } }`,
+            query: `query($showId: String!) { show(_id: $showId) { _id, name, thumbnail, banner, description, nativeName, englishName, type, availableEpisodesDetail, score, isAdult, genres } }`,
             variables: { showId },
         }, {
             headers: { 'User-Agent': USER_AGENT, Referer: REFERER },
@@ -482,6 +482,9 @@ class AllAnimeProvider {
                 availableEpisodesDetail: show.availableEpisodesDetail,
                 score: show.score,
                 isAdult: show.isAdult,
+                genres: Array.isArray(show.genres)
+                    ? show.genres.map((genre) => ({ name: genre }))
+                    : undefined,
             };
         }
         return null;

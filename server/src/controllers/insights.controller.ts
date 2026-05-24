@@ -1,183 +1,106 @@
 import { Request, Response } from 'express'
 import { AllAnimeProvider } from '../providers/allanime.provider'
+import { Show } from '../providers/provider.interface'
 import logger from '../logger'
-import { InsightsRepository } from '../repositories/insights.repository'
+import { InsightsRepository, MostWatchedTitle } from '../repositories/insights.repository'
 import { asyncHandler } from '../utils/async-handler'
 
-interface CoreStats {
-  totalSeconds?: number
-  totalEpisodes?: number
-  completedCount: number
-  totalWatchlist: number
-}
-
-interface ActivityDay {
-  day: string
-  count: number
-}
-
-interface HourlyStat {
-  hour: string
-  count: number
-}
-
-interface SeasonalStat {
-  month: string
+interface FavoriteGenre {
+  name: string
   seconds: number
 }
 
-interface WatchedShowMeta {
-  id: string
-  genres: string
-  popularityScore: number
+function parseGenres(value?: string): string[] {
+  if (!value) return []
+
+  try {
+    if (value.startsWith('[')) {
+      const parsed = JSON.parse(value)
+      return Array.isArray(parsed) ? parsed.filter((genre) => typeof genre === 'string') : []
+    }
+  } catch (error) {
+    logger.warn({ err: error }, 'Failed to parse genres for insights')
+    return []
+  }
+
+  return value
+    .split(',')
+    .map((genre) => genre.trim())
+    .filter(Boolean)
 }
 
-interface DroppedShow {
-  id: string
-  name: string
-  lastActivity: string
-}
+function buildFavoriteGenres(
+  titles: { genres?: string; watchedSeconds: number }[]
+): FavoriteGenre[] {
+  const weights = new Map<string, number>()
 
-interface CompletionVelocity {
-  daysToFinish: number
+  titles.forEach((title) => {
+    parseGenres(title.genres).forEach((genre) => {
+      weights.set(genre, (weights.get(genre) || 0) + Number(title.watchedSeconds || 0))
+    })
+  })
+
+  return Array.from(weights.entries())
+    .map(([name, seconds]) => ({ name, seconds }))
+    .sort((a, b) => b.seconds - a.seconds)
+    .slice(0, 5)
 }
 
 export class InsightsController {
   constructor(private provider: AllAnimeProvider) {}
 
-  getWatchInsights = asyncHandler(async (req: Request, res: Response) => {
-    const db = req.db
+  private async getRecommendations(
+    watched: MostWatchedTitle[],
+    favoriteGenres: FavoriteGenre[]
+  ): Promise<Show[]> {
+    if (watched.length === 0 || favoriteGenres.length === 0) return []
 
-    const [
-      core,
-      activityGrid,
-      hourlyDist,
-      seasonality,
-      allWatches,
-      watchedShows,
-      droppedWarning,
-      velocities,
-    ] = (await Promise.all([
-      InsightsRepository.getCoreStats(db),
-      InsightsRepository.getActivityGrid(db),
-      InsightsRepository.getHourlyDist(db),
-      InsightsRepository.getSeasonality(db),
-      InsightsRepository.getAllWatches(db),
-      InsightsRepository.getWatchedShowsMeta(db),
-      InsightsRepository.getDroppedShows(db),
-      InsightsRepository.getCompletionVelocities(db),
-    ])) as [
-      CoreStats,
-      ActivityDay[],
-      HourlyStat[],
-      SeasonalStat[],
-      { watchedAt: string; currentTime: number }[],
-      WatchedShowMeta[],
-      DroppedShow[],
-      CompletionVelocity[],
-    ]
+    const watchedIds = new Set(watched.map((title) => title.id))
+    const recommendations = new Map<string, Show>()
 
-    const bingeFactor = activityGrid.length > 0 ? Math.max(...activityGrid.map((a) => a.count)) : 0
-
-    const sessions: number[] = []
-    if (allWatches.length > 0) {
-      let currentSessionSeconds = allWatches[0].currentTime
-      for (let i = 1; i < allWatches.length; i++) {
-        const prev = new Date(allWatches[i - 1].watchedAt).getTime()
-        const curr = new Date(allWatches[i].watchedAt).getTime()
-        if (curr - prev < 3600000) {
-          currentSessionSeconds += allWatches[i].currentTime
-        } else {
-          sessions.push(currentSessionSeconds)
-          currentSessionSeconds = allWatches[i].currentTime
-        }
-      }
-      sessions.push(currentSessionSeconds)
-    }
-    const avgSessionMinutes =
-      sessions.length > 0
-        ? Math.round(sessions.reduce((a, b) => a + b, 0) / sessions.length / 60)
-        : 0
-
-    const genreCounts: Record<string, number> = {}
-    let totalPopScore = 0
-    let popCount = 0
-
-    for (const show of watchedShows) {
-      let genres: string[] = []
-      if (show.genres) {
+    await Promise.all(
+      favoriteGenres.slice(0, 2).map(async (genre) => {
         try {
-          if (show.genres.startsWith('[')) {
-            genres = JSON.parse(show.genres)
-          } else {
-            genres = show.genres.split(',').map((g: string) => g.trim())
-          }
-        } catch (e) {
-          logger.warn({ err: e, showId: show.id }, 'Failed to parse genres for insights')
+          const matches = await this.provider.search({ genres: genre.name, limit: '8' })
+          matches.forEach((show) => {
+            if (!watchedIds.has(show._id) && !show.isAdult && !recommendations.has(show._id)) {
+              recommendations.set(show._id, show)
+            }
+          })
+        } catch (error) {
+          logger.warn({ err: error, genre: genre.name }, 'Unable to load insight recommendations')
         }
-      }
+      })
+    )
 
-      for (const g of genres) {
-        genreCounts[g] = (genreCounts[g] || 0) + 1
-      }
+    return Array.from(recommendations.values()).slice(0, 8)
+  }
 
-      if (show.popularityScore) {
-        totalPopScore += show.popularityScore
-        popCount++
-      }
-    }
+  getWatchInsights = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.siteUser?.username || 'local'
+    const [summary, mostWatched, genreTitles, activity] = await Promise.all([
+      InsightsRepository.getSummary(req.db, userId),
+      InsightsRepository.getMostWatched(req.db, userId),
+      InsightsRepository.getGenreTitles(req.db, userId),
+      InsightsRepository.getActivity(req.db, userId),
+    ])
 
-    const topGenre = Object.entries(genreCounts).sort((a, b) => b[1] - a[1])[0]?.[0]
-    const personaMap: Record<string, string> = {
-      Action: 'Shonen Warrior',
-      Romance: 'Hopeless Romantic',
-      Comedy: 'Chaos Enjoyer',
-      'Slice of Life': 'Vibe Seeker',
-      Horror: 'Fearless Watcher',
-      Fantasy: 'Isekai Traveller',
-      'Sci-Fi': 'Future Scientist',
-      Drama: 'Feels Collector',
-    }
-    const persona = personaMap[topGenre || ''] || 'Anime Enthusiast'
-
-    const avgCompletionDays =
-      velocities.length > 0
-        ? Math.round(velocities.reduce((a, b) => a + b.daysToFinish, 0) / velocities.length)
-        : 0
+    const favoriteGenres = buildFavoriteGenres(genreTitles)
+    const recommendations = await this.getRecommendations(mostWatched, favoriteGenres)
 
     res.json({
-      totalHours: Math.round((core?.totalSeconds || 0) / 3600),
-      totalEpisodes: core?.totalEpisodes || 0,
-      completedAnime: core?.completedCount || 0,
-      completionRate:
-        core?.totalWatchlist > 0
-          ? Math.round((core.completedCount / core.totalWatchlist) * 100)
-          : 0,
-      persona,
-      bingeFactor,
-      avgSessionMinutes,
-      avgCompletionDays,
-      popularityScore: popCount > 0 ? Math.round(totalPopScore / popCount) : 0,
-      genreSplit:
-        Object.entries(genreCounts)
-          .map(([name, count]) => ({ name, count }))
-          .sort((a, b) => b.count - a.count)
-          .slice(0, 8) || [],
-      activityGrid: activityGrid || [],
-      hourlyDist:
-        Array.from({ length: 24 }, (_, i) => {
-          const hour = i.toString().padStart(2, '0')
-          return { hour, count: hourlyDist?.find((d) => d.hour === hour)?.count || 0 }
-        }) || [],
-      seasonality:
-        Array.from({ length: 12 }, (_, i) => {
-          const month = (i + 1).toString().padStart(2, '0')
-          return {
-            month,
-            seconds: seasonality?.find((s) => s.month === month)?.seconds || 0,
-          }
-        }) || [],
-      droppedShows: (droppedWarning || []).slice(0, 5),
+      totalSeconds: Number(summary?.totalSeconds || 0),
+      totalEpisodes: Number(summary?.totalEpisodes || 0),
+      titlesWatched: Number(summary?.titlesWatched || 0),
+      activeDays: Number(summary?.activeDays || 0),
+      mostWatched: mostWatched.map((title) => ({
+        ...title,
+        watchedSeconds: Number(title.watchedSeconds || 0),
+        episodesWatched: Number(title.episodesWatched || 0),
+      })),
+      favoriteGenres,
+      activity: activity.map((day) => ({ ...day, seconds: Number(day.seconds || 0) })),
+      recommendations,
     })
   })
 }

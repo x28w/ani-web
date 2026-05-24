@@ -429,10 +429,35 @@ export class WatchlistController {
     res.json({ success: true })
   })
 
+  recordWatchTime = asyncHandler(async (req: Request, res: Response) => {
+    const { showId, episodeNumber } = req.body
+    const seconds = Number(req.body?.seconds)
+
+    if (!showId || !episodeNumber || !Number.isFinite(seconds) || seconds <= 0 || seconds > 30) {
+      res.status(400).json({ error: 'A valid episode and watch interval are required' })
+      return
+    }
+
+    await performWriteTransaction(req.db, (tx) => {
+      WatchedEpisodesRepository.addWatchTime(
+        tx,
+        this.getProgressUserId(req),
+        showId,
+        episodeNumber,
+        Math.round(seconds)
+      )
+    })
+
+    req.db.scheduleSave()
+    res.json({ success: true })
+  })
+
   removeContinueWatching = asyncHandler(async (req: Request, res: Response) => {
     const { showId } = req.body
     await performWriteTransaction(req.db, (tx) => {
-      WatchedEpisodesRepository.deleteByShow(tx, this.getProgressUserId(req), showId)
+      const userId = this.getProgressUserId(req)
+      WatchedEpisodesRepository.deleteByShow(tx, userId, showId)
+      WatchedEpisodesRepository.deleteActivityByShow(tx, userId, showId)
     })
     res.json({ success: true })
   })
@@ -569,6 +594,7 @@ export class WatchlistController {
     await performWriteTransaction(req.db, (tx) => {
       WatchlistRepository.delete(tx, id)
       WatchedEpisodesRepository.deleteAllByShow(tx, id)
+      WatchedEpisodesRepository.deleteAllActivityByShow(tx, id)
       NotificationsRepository.deleteByShow(tx, id)
     })
     res.json({ success: true })
