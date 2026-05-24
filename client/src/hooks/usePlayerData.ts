@@ -129,15 +129,25 @@ export const usePlayerData = (
     queryKey: ['show-data', showId, uiState.currentMode],
     queryFn: async () => {
       if (!showId) throw new Error('No showId')
-      const [meta, episodeData, watchlistStatus, watchedEpisodes] = await Promise.all([
+      const [meta, selectedModeEpisodeData, watchlistStatus, watchedEpisodes] = await Promise.all([
         fetchApi(`/api/show-meta/${showId}`),
         fetchApi(`/api/episodes?showId=${showId}&mode=${uiState.currentMode}`).catch(() => null),
         fetchApi(`/api/watchlist/check/${showId}`).catch(() => ({ inWatchlist: false })),
         fetchApi(`/api/watched-episodes/${showId}`).catch(() => []),
       ])
 
-      const episodes = episodeData?.episodes
-        ? episodeData.episodes.sort((a: string, b: string) => parseFloat(a) - parseFloat(b))
+      // Some shows have dub streams without a dub-specific episode map in AllAnime.
+      // Keep navigation visible while video loading still requests the selected mode.
+      const fallbackEpisodeData =
+        uiState.currentMode === 'dub' && !selectedModeEpisodeData?.episodes?.length
+          ? await fetchApi(`/api/episodes?showId=${showId}&mode=sub`).catch(() => null)
+          : null
+      const episodeData =
+        selectedModeEpisodeData?.episodes?.length > 0
+          ? selectedModeEpisodeData
+          : fallbackEpisodeData || selectedModeEpisodeData
+      const episodes = Array.isArray(episodeData?.episodes)
+        ? [...episodeData.episodes].sort((a: string, b: string) => parseFloat(a) - parseFloat(b))
         : []
 
       const localWatchedEpisodes = getLocalWatchedEpisodeNumbers(showId)
