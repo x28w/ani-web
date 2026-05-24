@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react'
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import {
   FaChevronDown,
   FaChevronUp,
   FaFilter,
+  FaPlay,
   FaSearch,
   FaTrash,
   FaChevronLeft,
@@ -23,24 +24,18 @@ import {
   usePaginatedWatchlist,
   useRemoveFromWatchlist,
   usePaginatedAllContinueWatching,
+  useContinueWatchingFast,
   useGenresAndStudios,
 } from '../hooks/useAnimeData'
 import { useSetting, useUpdateSetting } from '../hooks/useSettings'
 import { useLowEndMode } from '../contexts/LowEndModeContext'
 import { useTitlePreference } from '../contexts/TitlePreferenceContext'
+import { fixThumbnailUrl } from '../lib/utils'
 import styles from './Watchlist.module.css'
 
-const FILTERS = [
-  'All',
-  'Continue Watching',
-  'Watching',
-  'Completed',
-  'On-Hold',
-  'Dropped',
-  'Planned',
-]
-
-const STATUS_OPTIONS = FILTERS.slice(2)
+const PRIMARY_FILTERS = ['All', 'Watching', 'Planned', 'Completed']
+const SECONDARY_FILTERS = ['Continue Watching', 'On-Hold', 'Dropped']
+const STATUS_OPTIONS = ['Watching', 'Completed', 'On-Hold', 'Dropped', 'Planned']
 
 interface Option {
   value: string
@@ -120,6 +115,7 @@ const Watchlist: React.FC = () => {
   const { lowEndMode } = useLowEndMode()
   const { titlePreference } = useTitlePreference()
   const { data: metaData } = useGenresAndStudios()
+  const { data: resumeItems } = useContinueWatchingFast(4)
   const availableGenres = metaData?.genres || []
   const availableStudios = metaData?.studios || []
   const availableTags = metaData?.tags || []
@@ -155,6 +151,10 @@ const Watchlist: React.FC = () => {
   const isLoading = isCW ? loadingCW : loadingWL
   const error = isCW ? errorCW : errorWL
   const nextPageData = isCW ? nextCwData : nextWlData
+  const activeFilterCount =
+    [type, season, year, country, language, studio, tag].filter((value) => value !== 'ALL').length +
+    Object.keys(genreStates).length
+  const currentSecondaryFilter = SECONDARY_FILTERS.includes(filterBy) ? filterBy : ''
 
   useEffect(() => {
     setQuery(searchParams.get('query') || '')
@@ -331,30 +331,119 @@ const Watchlist: React.FC = () => {
   return (
     <div className="page-container">
       <header className={styles.header}>
-        <h2 className={styles.title}>My Watchlist</h2>
-        <p className={styles.subtitle}>Track and manage your anime collection</p>
+        <div>
+          <h2 className={styles.title}>My Watchlist</h2>
+          <p className={styles.subtitle}>Your collection, progress, and plans in one place</p>
+        </div>
+        <div className={styles.collectionSummary}>
+          <strong>{total}</strong>
+          <span>
+            {isCW ? 'titles in progress' : filterBy === 'All' ? 'saved titles' : filterBy}
+          </span>
+        </div>
       </header>
 
-      <div className={styles.controls}>
-        <div className={styles.filters}>
-          {FILTERS.map((f) => (
+      {!isCW && resumeItems && resumeItems.length > 0 && (
+        <section className={styles.resumeSection} aria-label="Resume watching">
+          <div className={styles.resumeHeader}>
+            <h3>Resume Watching</h3>
             <button
-              key={f}
-              className={`${styles.filterBtn} ${filterBy === f ? styles.active : ''}`}
-              onClick={() => {
-                navigate({
-                  pathname: `/watchlist/${f}`,
-                  search: searchParams.toString(),
-                })
-              }}
+              className={styles.viewAllButton}
+              onClick={() => navigate('/watchlist/Continue Watching')}
             >
-              {f}
+              View all
+            </button>
+          </div>
+          <div className={styles.resumeGrid}>
+            {resumeItems.slice(0, 4).map((item) => {
+              const episode = item.episodeNumber ?? item.nextEpisodeToWatch
+              const displayTitle =
+                (item[titlePreference as keyof typeof item] as string) || item.name
+              const progress =
+                item.duration && item.currentTime
+                  ? Math.min((item.currentTime / item.duration) * 100, 100)
+                  : 0
+              const target = episode
+                ? `/watch/${item._id || item.id}/${episode}`
+                : `/watch/${item._id || item.id}`
+
+              return (
+                <Link className={styles.resumeCard} to={target} key={item.id || item._id}>
+                  <img src={fixThumbnailUrl(item.thumbnail, 96, 136)} alt="" loading="lazy" />
+                  <div className={styles.resumeInfo}>
+                    <h4>{displayTitle}</h4>
+                    <span>{episode ? `Episode ${episode}` : 'Continue watching'}</span>
+                    <div className={styles.resumeProgress} aria-hidden="true">
+                      <div style={{ width: `${progress}%` }} />
+                    </div>
+                  </div>
+                  <span className={styles.resumePlay} aria-hidden="true">
+                    <FaPlay />
+                  </span>
+                </Link>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      <div className={styles.toolbar}>
+        <div className={styles.filters} aria-label="Watchlist status">
+          {PRIMARY_FILTERS.map((filter) => (
+            <button
+              key={filter}
+              className={`${styles.filterBtn} ${filterBy === filter ? styles.active : ''}`}
+              onClick={() =>
+                navigate({ pathname: `/watchlist/${filter}`, search: searchParams.toString() })
+              }
+            >
+              {filter}
             </button>
           ))}
+          <select
+            className={`${styles.moreSelect} ${currentSecondaryFilter ? styles.secondaryActive : ''}`}
+            value={currentSecondaryFilter}
+            aria-label="More watchlist categories"
+            onChange={(event) => {
+              if (event.currentTarget.value) {
+                navigate({
+                  pathname: `/watchlist/${event.currentTarget.value}`,
+                  search: searchParams.toString(),
+                })
+              }
+            }}
+          >
+            <option value="">More</option>
+            {SECONDARY_FILTERS.map((filter) => (
+              <option value={filter} key={filter}>
+                {filter}
+              </option>
+            ))}
+          </select>
         </div>
-        <div>
+
+        <div className={styles.toolbarActions}>
+          <div className={styles.inputIconWrapper}>
+            <FaSearch className={styles.searchIcon} />
+            <input
+              className={styles.searchInput}
+              aria-label="Search your watchlist by title"
+              placeholder="Search your watchlist by title..."
+              value={query}
+              onInput={(e) => setQuery(e.currentTarget.value)}
+              onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
+            />
+            <button
+              className={styles.submitSearch}
+              onClick={() => applyFilters()}
+              aria-label="Search watchlist"
+            >
+              <FaSearch />
+            </button>
+          </div>
           <select
             className={styles.sortSelect}
+            aria-label="Sort watchlist"
             value={sortBy}
             onChange={(e) => {
               const nextSortBy = e.currentTarget.value
@@ -366,141 +455,126 @@ const Watchlist: React.FC = () => {
             <option value="name_asc">Name (A-Z)</option>
             <option value="name_desc">Name (Z-A)</option>
           </select>
+          <button
+            className={`${styles.filterToggleBtn} ${showFilters ? styles.active : ''}`}
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <FaFilter size={14} />
+            <span>Filters</span>
+            {activeFilterCount > 0 && (
+              <span className={styles.filterCount}>{activeFilterCount}</span>
+            )}
+            {showFilters ? <FaChevronUp size={12} /> : <FaChevronDown size={12} />}
+          </button>
         </div>
       </div>
 
-      <div className={styles.filterContainer}>
-        <div className={styles.searchBarWrapper}>
-          <div className={styles.inputIconWrapper}>
-            <FaSearch className={styles.searchIcon} />
-            <input
-              className={styles.searchInput}
-              placeholder="Search your watchlist by title..."
-              value={query}
-              onInput={(e) => setQuery(e.currentTarget.value)}
-              onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
-            />
-          </div>
-          <div className={styles.searchActions}>
-            <Button onClick={() => applyFilters()} className={styles.searchBtn}>
-              Search
-            </Button>
-            <button
-              className={`${styles.filterToggleBtn} ${showFilters ? styles.active : ''}`}
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              <FaFilter size={14} />
-              <span>Filters</span>
-              {showFilters ? <FaChevronUp size={12} /> : <FaChevronDown size={12} />}
-            </button>
-          </div>
-        </div>
-
-        <div className={`${styles.advancedFilters} ${showFilters ? styles.show : ''}`}>
-          <div className={styles.filterDivider} />
-
-          <div className={styles.filterGrid}>
-            <div className={styles.filterItem}>
-              <label>Type</label>
-              <select value={type} onChange={(e) => setType(e.currentTarget.value)}>
-                {typeOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className={styles.filterItem}>
-              <label>Season</label>
-              <select value={season} onChange={(e) => setSeason(e.currentTarget.value)}>
-                {seasonOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className={styles.filterItem}>
-              <label>Year</label>
-              <select value={year} onChange={(e) => setYear(e.currentTarget.value)}>
-                {yearOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className={styles.filterItem}>
-              <label>Country</label>
-              <select value={country} onChange={(e) => setCountry(e.currentTarget.value)}>
-                {countryOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className={styles.filterItem}>
-              <label>Language</label>
-              <select value={language} onChange={(e) => setLanguage(e.currentTarget.value)}>
-                {languageOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {studioOptions.length > 1 && (
+      {showFilters && (
+        <div className={styles.filterContainer}>
+          <div className={`${styles.advancedFilters} ${styles.show}`}>
+            <div className={styles.filterGrid}>
               <div className={styles.filterItem}>
-                <label>Studio</label>
-                <SearchableSelect
-                  options={studioOptions}
-                  value={studio}
-                  onChange={setStudio}
-                  placeholder="All Studios"
-                />
+                <label>Type</label>
+                <select value={type} onChange={(e) => setType(e.currentTarget.value)}>
+                  {typeOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className={styles.filterItem}>
+                <label>Season</label>
+                <select value={season} onChange={(e) => setSeason(e.currentTarget.value)}>
+                  {seasonOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className={styles.filterItem}>
+                <label>Year</label>
+                <select value={year} onChange={(e) => setYear(e.currentTarget.value)}>
+                  {yearOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className={styles.filterItem}>
+                <label>Country</label>
+                <select value={country} onChange={(e) => setCountry(e.currentTarget.value)}>
+                  {countryOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className={styles.filterItem}>
+                <label>Language</label>
+                <select value={language} onChange={(e) => setLanguage(e.currentTarget.value)}>
+                  {languageOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {studioOptions.length > 1 && (
+                <div className={styles.filterItem}>
+                  <label>Studio</label>
+                  <SearchableSelect
+                    options={studioOptions}
+                    value={studio}
+                    onChange={setStudio}
+                    placeholder="All Studios"
+                  />
+                </div>
+              )}
+              {tagOptions.length > 1 && (
+                <div className={styles.filterItem}>
+                  <label>Tag</label>
+                  <SearchableSelect
+                    options={tagOptions}
+                    value={tag}
+                    onChange={setTag}
+                    placeholder="All Tags"
+                  />
+                </div>
+              )}
+            </div>
+
+            {availableGenres.length > 0 && (
+              <div className={styles.genreSection}>
+                <label className={styles.genreLabel}>Genres</label>
+                <div className={styles.genreContainer}>
+                  {availableGenres.map((genre) => (
+                    <button
+                      key={genre}
+                      className={`${styles.genreButton} ${styles[genreStates[genre] || '']}`}
+                      onClick={() => toggleGenre(genre)}
+                    >
+                      {genre}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
-            {tagOptions.length > 1 && (
-              <div className={styles.filterItem}>
-                <label>Tag</label>
-                <SearchableSelect
-                  options={tagOptions}
-                  value={tag}
-                  onChange={setTag}
-                  placeholder="All Tags"
-                />
-              </div>
-            )}
-          </div>
 
-          {availableGenres.length > 0 && (
-            <div className={styles.genreSection}>
-              <label className={styles.genreLabel}>Genres</label>
-              <div className={styles.genreContainer}>
-                {availableGenres.map((genre) => (
-                  <button
-                    key={genre}
-                    className={`${styles.genreButton} ${styles[genreStates[genre] || '']}`}
-                    onClick={() => toggleGenre(genre)}
-                  >
-                    {genre}
-                  </button>
-                ))}
-              </div>
+            <div className={styles.filterActions}>
+              <Button variant="secondary" onClick={resetFilters}>
+                Reset All
+              </Button>
+              <Button onClick={() => applyFilters()} className={styles.applyBtn}>
+                Apply Filters
+              </Button>
             </div>
-          )}
-
-          <div className={styles.filterActions}>
-            <Button variant="secondary" onClick={resetFilters}>
-              Reset All
-            </Button>
-            <Button onClick={() => applyFilters()} className={styles.applyBtn}>
-              Apply Filters
-            </Button>
           </div>
         </div>
-      </div>
+      )}
 
       <div className={styles.resultsHeader} ref={gridRef}>
         <h3 className={styles.resultsTitle}>
@@ -549,6 +623,7 @@ const Watchlist: React.FC = () => {
                 <div className={styles.cardActions}>
                   <select
                     className={styles.statusSelect}
+                    aria-label={`Change status for ${item.name}`}
                     value={item.status}
                     onChange={(e) =>
                       updateStatus.mutate({ id: item.id, status: e.currentTarget.value })

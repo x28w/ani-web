@@ -8,7 +8,7 @@
   font-weight: 800;
   color: var(--text-primary);
   margin: 0 0 var(--space-2);
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .pageSubtitle {
@@ -87,6 +87,10 @@
   box-shadow: var(--glass-shadow);
 }
 
+.profileCard {
+  padding: var(--space-6) var(--space-8);
+}
+
 .sectionCard h3 {
   margin: 0 0 var(--space-2);
   font-size: var(--font-size-lg);
@@ -99,6 +103,118 @@
   font-size: var(--font-size-sm);
   margin: 0 0 var(--space-6);
   line-height: 1.6;
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.sectionHeading p {
+  margin: 0;
+}
+
+.localBadge {
+  flex-shrink: 0;
+  padding: 5px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(16, 185, 129, 0.24);
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.08);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.preferenceGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.sectionIntro {
+  margin-bottom: var(--space-5) !important;
+}
+
+.settingsList {
+  border-top: 1px solid var(--border-primary);
+}
+
+.titlePreference {
+  padding: var(--space-5) 0;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.preferenceRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-5);
+  padding-top: var(--space-5);
+}
+
+.preferenceCopy {
+  min-width: 0;
+}
+
+.preferenceCopy h4 {
+  margin: 0 0 var(--space-2);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.preferenceCopy p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.telemetryDetails {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.telemetryDetails summary {
+  cursor: pointer;
+  color: var(--accent-light);
+  font-weight: 600;
+  list-style-position: inside;
+}
+
+.telemetryData {
+  margin-top: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+}
+
+.telemetryData div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.telemetryData span {
+  color: var(--text-tertiary);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.telemetryData code {
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  word-break: break-all;
 }
 
 .settingItem {
@@ -244,6 +360,10 @@
   .sidebarItem span {
     display: block;
   }
+
+  .preferenceGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 480px) {
@@ -260,6 +380,11 @@
     padding: var(--space-6);
   }
 
+  .sectionHeading {
+    flex-direction: column-reverse;
+    gap: var(--space-3);
+  }
+
   .profileActions {
     width: 100%;
     justify-content: flex-start;
@@ -268,5 +393,9 @@
   .profileEditor {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .preferenceRow {
+    gap: var(--space-3);
   }
 }

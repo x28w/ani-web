@@ -1,16 +1,14 @@
 .title-preference-container {
-  margin-bottom: var(--space-6);
-  padding: var(--space-4);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md);
-  background-color: var(--bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
 }
 
 .title-preference-container h4 {
-  margin-top: 0;
-  margin-bottom: var(--space-4);
+  margin: 0;
   color: var(--text-primary);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
 }
 
@@ -20,27 +18,27 @@
 
 .toggle-button {
   position: relative;
-  width: 200px;
-  height: 40px;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
-  border: none;
-  border-radius: 20px;
+  width: 152px;
+  height: 36px;
+  flex-shrink: 0;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-full);
   cursor: pointer;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-size: var(--font-size-base);
+  color: var(--accent-light);
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   transition: var(--transition-base);
-  box-shadow: var(--shadow-md);
+  box-shadow: none;
 }
 
 .toggle-button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
-  filter: brightness(1.1);
+  border-color: var(--accent);
+  background: var(--bg-elevated);
 }
 
 .toggle-button:disabled {
@@ -52,4 +50,15 @@
   position: absolute;
   white-space: nowrap;
   transition: var(--transition-base);
+}
+
+@media (max-width: 480px) {
+  .title-preference-container {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .toggle-button {
+    width: 100%;
+  }
 }

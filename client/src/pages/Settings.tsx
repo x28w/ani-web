@@ -199,9 +199,14 @@ const Settings: React.FC = () => {
       case 'general':
         return (
           <div className={styles.tabContent}>
-            <div className={styles.sectionCard}>
-              <h3>Profile</h3>
-              <p>Customize the profile shown in the header on this browser.</p>
+            <div className={`${styles.sectionCard} ${styles.profileCard}`}>
+              <div className={styles.sectionHeading}>
+                <div>
+                  <h3>Profile</h3>
+                  <p>Customize the identity shown in your header.</p>
+                </div>
+                <span className={styles.localBadge}>Browser only</span>
+              </div>
               <div className={styles.profileRow}>
                 <div className={styles.profileAvatar}>
                   {user?.profilePictureUrl && !profileImageFailed ? (
@@ -249,92 +254,67 @@ const Settings: React.FC = () => {
               />
               {profileStatus && <p className={styles.status}>{profileStatus}</p>}
             </div>
-            <div className={styles.sectionCard}>
-              <h3>Appearance & Preferences</h3>
-              <p>Configure how titles are displayed and other general preferences.</p>
-              <div className={styles.settingItem}>
-                <TitlePreferenceToggle />
-              </div>
-              <div className={styles.settingItem} style={{ marginTop: '1.5rem' }}>
-                <div
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                >
-                  <div>
-                    <h4 style={{ margin: 0, fontSize: '1rem' }}>Low End Mode</h4>
-                    <p
-                      style={{
-                        margin: '0.25rem 0 0',
-                        fontSize: '0.85rem',
-                        color: 'var(--text-secondary)',
-                      }}
-                    >
-                      Disables animations and heavy visual effects for better performance on older
-                      hardware.
-                    </p>
+            <div className={styles.preferenceGrid}>
+              <div className={styles.sectionCard}>
+                <h3>Preferences</h3>
+                <p className={styles.sectionIntro}>
+                  Adjust display and performance for this device.
+                </p>
+                <div className={styles.settingsList}>
+                  <div className={styles.titlePreference}>
+                    <TitlePreferenceToggle title="Title language" />
                   </div>
-                  <ToggleSwitch
-                    isChecked={lowEndMode}
-                    onChange={(e) => setLowEndMode(e.target.checked)}
-                    id="low-end-mode"
-                  />
+                  <div className={styles.preferenceRow}>
+                    <div className={styles.preferenceCopy}>
+                      <h4>Low End Mode</h4>
+                      <p>Reduce animations and heavy visual effects on slower hardware.</p>
+                    </div>
+                    <ToggleSwitch
+                      isChecked={lowEndMode}
+                      onChange={(e) => setLowEndMode(e.target.checked)}
+                      id="low-end-mode"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className={styles.settingItem} style={{ marginTop: '1.5rem' }}>
-                <div
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                >
-                  <div>
-                    <h4 style={{ margin: 0, fontSize: '1rem' }}>Telemetry Tracking</h4>
-                    <p
-                      style={{
-                        margin: '0.25rem 0 0',
-                        fontSize: '0.85rem',
-                        color: 'var(--text-secondary)',
-                      }}
-                    >
-                      Share anonymous installation data to help track active users. Collected: UUID,
-                      App Version, First Seen/Last Seen timestamps, and User Agent string. No other
-                      personal information or usage habits are collected.
-                    </p>
-                  </div>
-                  <ToggleSwitch
-                    isChecked={telemetryEnabled}
-                    onChange={(e) => toggleTelemetry(e.target.checked)}
-                    id="telemetry-enabled"
-                  />
-                </div>
-                {telemetryEnabled && (
-                  <div
-                    style={{
-                      marginTop: '0.75rem',
-                      fontSize: '0.8rem',
-                      color: 'var(--text-secondary)',
-                    }}
-                  >
-                    <p style={{ margin: '0 0 0.5rem 0', fontWeight: 'bold' }}>
-                      Data currently being shared:
-                    </p>
-                    <div
-                      style={{
-                        background: '#1a1a1a',
-                        padding: '0.5rem',
-                        borderRadius: '4px',
-                        wordBreak: 'break-all',
-                        fontFamily: 'monospace',
-                      }}
-                    >
-                      <p style={{ margin: '0' }}>
-                        <strong>ID:</strong> {localStorage.getItem('installation_id')}
-                      </p>
-                      <p style={{ margin: '0' }}>
-                        <strong>Version:</strong> {packageJson.version}
-                      </p>
-                      <p style={{ margin: '0' }}>
-                        <strong>Browser:</strong> {navigator.userAgent.substring(0, 60)}...
+              <div className={styles.sectionCard}>
+                <h3>Privacy</h3>
+                <p className={styles.sectionIntro}>Control optional installation telemetry.</p>
+                <div className={styles.settingsList}>
+                  <div className={styles.preferenceRow}>
+                    <div className={styles.preferenceCopy}>
+                      <h4>Telemetry Tracking</h4>
+                      <p>
+                        Share an anonymous installation ID, app version, last-seen time, and browser
+                        type. Watch history is not included.
                       </p>
                     </div>
+                    <ToggleSwitch
+                      isChecked={telemetryEnabled}
+                      onChange={(e) => toggleTelemetry(e.target.checked)}
+                      id="telemetry-enabled"
+                    />
                   </div>
+                </div>
+                {telemetryEnabled && (
+                  <details className={styles.telemetryDetails}>
+                    <summary>View shared installation details</summary>
+                    <div className={styles.telemetryData}>
+                      <div>
+                        <span>Installation ID</span>
+                        <code>{localStorage.getItem('installation_id') || 'Not assigned yet'}</code>
+                      </div>
+                      <div>
+                        <span>Version</span>
+                        <code>{packageJson.version}</code>
+                      </div>
+                      <div>
+                        <span>Browser</span>
+                        <code>{navigator.userAgent.substring(0, 60)}...</code>
+                      </div>
+                    </div>
+                  </details>
                 )}
               </div>
             </div>
@@ -389,7 +369,7 @@ const Settings: React.FC = () => {
     <div className="page-container">
       <div className={styles.settingsHeader}>
         <h1 className={styles.pageTitle}>Settings</h1>
-        <p className={styles.pageSubtitle}>Manage your profile, preferences, and watchlist</p>
+        <p className={styles.pageSubtitle}>Profile, viewing preferences, and account controls</p>
       </div>
 
       <div className={styles.settingsLayout}>
