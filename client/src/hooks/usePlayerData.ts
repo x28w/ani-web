@@ -136,26 +136,25 @@ export const usePlayerData = (
         fetchApi(`/api/watched-episodes/${showId}`).catch(() => []),
       ])
 
-      // Some shows have dub streams without a dub-specific episode map in AllAnime.
-      // Keep navigation visible while video loading still requests the selected mode.
-      const fallbackEpisodeData =
-        uiState.currentMode === 'dub' && !selectedModeEpisodeData?.episodes?.length
-          ? await fetchApi(`/api/episodes?showId=${showId}&mode=sub`).catch(() => null)
-          : null
-      const episodeData =
-        selectedModeEpisodeData?.episodes?.length > 0
-          ? selectedModeEpisodeData
-          : fallbackEpisodeData || selectedModeEpisodeData
-      const episodes = Array.isArray(episodeData?.episodes)
-        ? [...episodeData.episodes].sort((a: string, b: string) => parseFloat(a) - parseFloat(b))
+      // Dubs may release later than subs, so use the complete episode numbering
+      // for navigation while video loading still requests the selected mode.
+      const selectedModeEpisodes = Array.isArray(selectedModeEpisodeData?.episodes)
+        ? selectedModeEpisodeData.episodes
         : []
+      const subEpisodes =
+        uiState.currentMode === 'dub' && Array.isArray(meta?.availableEpisodesDetail?.sub)
+          ? meta.availableEpisodesDetail.sub
+          : []
+      const episodes = Array.from(new Set([...selectedModeEpisodes, ...subEpisodes])).sort(
+        (a: string, b: string) => parseFloat(a) - parseFloat(b)
+      )
 
       const localWatchedEpisodes = getLocalWatchedEpisodeNumbers(showId)
 
       return {
         showMeta: {
           ...meta,
-          description: episodeData?.description || meta?.description,
+          description: selectedModeEpisodeData?.description || meta?.description,
           names: meta?.names || {
             romaji: meta?.name,
             english: meta?.englishName,
