@@ -44,6 +44,27 @@ const countryOptions: Option[] = [
   { value: 'CN', label: 'China' },
 ]
 
+const FILTER_KEYS = ['type', 'season', 'year', 'country', 'studios', 'genres', 'excludeGenres']
+
+const getGenreStateFromParams = (params: URLSearchParams) => {
+  const states: { [key: string]: 'include' | 'exclude' } = {}
+  params
+    .get('genres')
+    ?.split(',')
+    .filter(Boolean)
+    .forEach((genre) => {
+      states[genre] = 'include'
+    })
+  params
+    .get('excludeGenres')
+    ?.split(',')
+    .filter(Boolean)
+    .forEach((genre) => {
+      states[genre] = 'exclude'
+    })
+  return states
+}
+
 export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [query, setQuery] = useState(searchParams.get('query') || '')
@@ -54,7 +75,9 @@ export default function Search() {
   const [year, setYear] = useState(searchParams.get('year') || 'ALL')
   const [country, setCountry] = useState(searchParams.get('country') || 'ALL')
   const [studio, setStudio] = useState(searchParams.get('studios') || 'ALL')
-  const [showFilters, setShowFilters] = useState(false)
+  const [showFilters, setShowFilters] = useState(() =>
+    FILTER_KEYS.some((key) => searchParams.has(key))
+  )
   const { lowEndMode } = useLowEndMode()
   const resultsRef = useRef<HTMLDivElement>(null)
 
@@ -62,14 +85,9 @@ export default function Search() {
   const availableGenres = metaData?.genres || []
   const availableStudios = metaData?.studios || []
 
-  const [genreStates, setGenreStates] = useState<{ [key: string]: 'include' | 'exclude' }>(() => {
-    const states: { [key: string]: 'include' | 'exclude' } = {}
-    const genres = searchParams.get('genres')?.split(',') || []
-    const exclude = searchParams.get('excludeGenres')?.split(',') || []
-    genres.forEach((g) => g && (states[g] = 'include'))
-    exclude.forEach((g) => g && (states[g] = 'exclude'))
-    return states
-  })
+  const [genreStates, setGenreStates] = useState<{ [key: string]: 'include' | 'exclude' }>(() =>
+    getGenreStateFromParams(searchParams)
+  )
 
   // We only pass filters that are NOT 'page' to usePaginatedSearchAnime
   const filterParams = new URLSearchParams(searchParams)
@@ -94,12 +112,7 @@ export default function Search() {
     setStudio(searchParams.get('studios') || 'ALL')
     setPage(parseInt(searchParams.get('page') || '1'))
 
-    const states: { [key: string]: 'include' | 'exclude' } = {}
-    const genres = searchParams.get('genres')?.split(',') || []
-    const exclude = searchParams.get('excludeGenres')?.split(',') || []
-    genres.forEach((g) => g && (states[g] = 'include'))
-    exclude.forEach((g) => g && (states[g] = 'exclude'))
-    setGenreStates(states)
+    setGenreStates(getGenreStateFromParams(searchParams))
   }, [searchParams])
 
   const handleSearch = (newPage = 1) => {
@@ -165,47 +178,84 @@ export default function Search() {
     ...availableStudios.map((s) => ({ value: s, label: s })),
   ]
 
+  const appliedQuery = searchParams.get('query')?.trim() || ''
+  const activeFilterCount =
+    [type, season, year, country, studio].filter((value) => value !== 'ALL').length +
+    Object.keys(genreStates).length
   const canGoNext = results.length >= 14 && nextPageData && nextPageData.length > 0
+
+  const resetFilters = () => {
+    setType('ALL')
+    setSeason('ALL')
+    setYear('ALL')
+    setCountry('ALL')
+    setStudio('ALL')
+    setGenreStates({})
+
+    const params = new URLSearchParams()
+    if (query.trim()) params.set('query', query.trim())
+    setSearchParams(params)
+    setPage(1)
+  }
 
   return (
     <div className="page-container">
-      <div className={styles.header}>
-        <h1 className={styles.pageTitle}>Search Anime</h1>
-        <p className={styles.pageSubtitle}>
-          Search through thousands of titles and discover your next favorite
-        </p>
-      </div>
+      <header className={styles.header}>
+        <div>
+          <h1 className={styles.pageTitle}>Search</h1>
+          <p className={styles.pageSubtitle}>Find anime by title, studio, season or genre</p>
+        </div>
+        {!isLoading && !isError && results.length > 0 && (
+          <div className={styles.resultsSummary}>
+            <strong>{results.length}</strong>
+            <span>shown on this page</span>
+          </div>
+        )}
+      </header>
 
-      <div className={styles.filterContainer}>
+      <form
+        className={styles.searchToolbar}
+        onSubmit={(event) => {
+          event.preventDefault()
+          handleSearch()
+        }}
+      >
         <div className={styles.searchBarWrapper}>
           <div className={styles.inputIconWrapper}>
             <FaSearch className={styles.searchIcon} />
             <input
               className={styles.searchInput}
-              placeholder="Search by title, character, or studio..."
+              aria-label="Search anime titles"
+              placeholder="Search anime titles..."
               value={query}
               onInput={(e) => setQuery(e.currentTarget.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             />
           </div>
           <div className={styles.searchActions}>
-            <Button onClick={() => handleSearch()} className={styles.searchBtn}>
+            <Button type="submit" className={styles.searchBtn}>
+              <FaSearch size={13} />
               Search
             </Button>
             <button
+              type="button"
               className={`${styles.filterToggleBtn} ${showFilters ? styles.active : ''}`}
               onClick={() => setShowFilters(!showFilters)}
+              aria-expanded={showFilters}
+              aria-controls="search-filters"
             >
               <FaFilter size={14} />
               <span>Filters</span>
+              {activeFilterCount > 0 && (
+                <span className={styles.filterCount}>{activeFilterCount}</span>
+              )}
               {showFilters ? <FaChevronUp size={12} /> : <FaChevronDown size={12} />}
             </button>
           </div>
         </div>
+      </form>
 
-        <div className={`${styles.advancedFilters} ${showFilters ? styles.show : ''}`}>
-          <div className={styles.filterDivider} />
-
+      {showFilters && (
+        <div className={styles.filterContainer} id="search-filters">
           <div className={styles.filterGrid}>
             <div className={styles.filterItem}>
               <label>Type</label>
@@ -266,6 +316,7 @@ export default function Search() {
               <div className={styles.genreContainer}>
                 {availableGenres.map((g) => (
                   <button
+                    type="button"
                     key={g}
                     className={`${styles.genreButton} ${styles[genreStates[g] || '']}`}
                     onClick={() => toggleGenre(g)}
@@ -278,17 +329,7 @@ export default function Search() {
           )}
 
           <div className={styles.filterActions}>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setGenreStates({})
-                setType('ALL')
-                setSeason('ALL')
-                setYear('ALL')
-                setCountry('ALL')
-                setStudio('ALL')
-              }}
-            >
+            <Button variant="secondary" onClick={resetFilters}>
               Reset All
             </Button>
             <Button onClick={() => handleSearch()} className={styles.applyBtn}>
@@ -296,14 +337,23 @@ export default function Search() {
             </Button>
           </div>
         </div>
-      </div>
+      )}
 
       {isError && <ErrorMessage message={error?.message || 'Error'} />}
 
       <div className={styles.resultsHeader} ref={resultsRef}>
-        <h2 className={styles.resultsTitle}>
-          {query ? `Search Results for "${query}"` : 'Discover Anime'}
-        </h2>
+        <div>
+          <h2 className={styles.resultsTitle}>
+            {appliedQuery ? `Results for "${appliedQuery}"` : 'Browse Anime'}
+          </h2>
+          {!isLoading && !isError && (
+            <span className={styles.itemCount}>
+              {results.length === 0
+                ? 'No matching titles'
+                : `${results.length} titles on page ${page}`}
+            </span>
+          )}
+        </div>
 
         {results.length > 0 && (
           <div className={styles.pagination}>
@@ -328,19 +378,21 @@ export default function Search() {
         )}
       </div>
 
-      <div className={`${styles.resultsGrid} ${lowEndMode ? styles.lowEnd : ''}`}>
-        {isLoading ? (
-          <SkeletonGrid />
-        ) : (
-          results.map((anime) => <AnimeCard key={anime._id} anime={anime} />)
-        )}
-      </div>
+      {isLoading ? (
+        <SkeletonGrid />
+      ) : results.length > 0 ? (
+        <div className={`${styles.resultsGrid} ${lowEndMode ? styles.lowEnd : ''}`}>
+          {results.map((anime) => (
+            <AnimeCard key={anime._id} anime={anime} />
+          ))}
+        </div>
+      ) : null}
 
-      {!isLoading && results.length === 0 && (
+      {!isLoading && !isError && results.length === 0 && (
         <div className={styles.noResults}>
-          <FaSearch size={48} className={styles.noResultsIcon} />
+          <FaSearch size={30} className={styles.noResultsIcon} />
           <h3>No results found</h3>
-          <p>Try adjusting your search or filters to find what you're looking for.</p>
+          <p>Try another title or loosen one of your filters.</p>
         </div>
       )}
 
