@@ -9,7 +9,7 @@ interface LoginLocationState {
 }
 
 const Login: React.FC = () => {
-  const { authenticated, enabled, login, browseAsGuest } = useAuth()
+  const { authenticated, enabled, user, login, browseAsGuest, dismissGuestSignIn } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const locationState = location.state as LoginLocationState | null
@@ -23,7 +23,7 @@ const Login: React.FC = () => {
     document.title = 'Sign in - ani-web'
   }, [])
 
-  if (authenticated) {
+  if (authenticated && user?.role !== 'guest') {
     return <Navigate to={redirectTo} replace />
   }
 
@@ -47,8 +47,9 @@ const Login: React.FC = () => {
     setIsSubmitting(true)
 
     try {
-      await browseAsGuest()
-      navigate('/', { replace: true })
+      if (!authenticated) await browseAsGuest()
+      dismissGuestSignIn()
+      navigate('/settings', { replace: true })
     } catch (guestError) {
       setError(guestError instanceof Error ? guestError.message : 'Unable to browse as guest.')
     } finally {
@@ -64,7 +65,13 @@ const Login: React.FC = () => {
           <FaLock />
           <div>
             <h1>Sign in</h1>
-            <p>{enabled ? 'Enter your ani-web account.' : 'Site login is not configured.'}</p>
+            <p>
+              {enabled
+                ? user?.role === 'guest'
+                  ? 'Sign in, or continue with your guest profile.'
+                  : 'Enter your ani-web account.'
+                : 'Site login is not configured.'}
+            </p>
           </div>
         </div>
 
@@ -102,7 +109,7 @@ const Login: React.FC = () => {
           onClick={handleGuestBrowse}
           disabled={isSubmitting}
         >
-          Browse as guest
+          Continue as guest
         </button>
       </form>
     </div>

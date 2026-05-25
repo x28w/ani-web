@@ -117,17 +117,6 @@
   margin: 0;
 }
 
-.localBadge {
-  flex-shrink: 0;
-  padding: 5px 10px;
-  border-radius: var(--radius-full);
-  border: 1px solid rgba(16, 185, 129, 0.24);
-  color: #34d399;
-  background: rgba(16, 185, 129, 0.08);
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-}
-
 .preferenceGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -378,11 +367,6 @@
 
   .sectionCard {
     padding: var(--space-6);
-  }
-
-  .sectionHeading {
-    flex-direction: column-reverse;
-    gap: var(--space-3);
   }
 
   .profileActions {

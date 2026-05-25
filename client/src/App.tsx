@@ -15,6 +15,7 @@ const MAL = lazy(() => import('./pages/MAL'))
 const Insights = lazy(() => import('./pages/Insights'))
 const AnimeInfoPage = lazy(() => import('./pages/AnimeInfoPage'))
 const Login = lazy(() => import('./pages/Login'))
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
 
 import { useSidebar } from './hooks/useSidebar'
 import { Toaster } from 'react-hot-toast'
@@ -29,7 +30,7 @@ const PlayerRedirect = () => {
 
 function App() {
   const { isOpen, setIsOpen } = useSidebar()
-  const { authenticated, loading } = useAuth()
+  const { authenticated, loading, user } = useAuth()
   const location = useLocation()
   useTelemetry()
 
@@ -92,7 +93,7 @@ function App() {
     )
   }
 
-  if (!authenticated) {
+  if (!authenticated || (user?.role === 'guest' && location.pathname === '/login')) {
     return (
       <>
         {toaster}
@@ -103,7 +104,7 @@ function App() {
               path="*"
               element={
                 <Navigate
-                  to="/login"
+                  to={authenticated ? '/' : '/login'}
                   state={{ from: `${location.pathname}${location.search}` }}
                   replace
                 />
@@ -129,6 +130,7 @@ function App() {
               <Route path="/watchlist/:filter?" element={<Watchlist />} />
               <Route path="/search" element={<Search />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/mal" element={<MAL />} />
               <Route path="/insights" element={<Insights />} />
               <Route path="/anime/:id" element={<AnimeInfoPage />} />

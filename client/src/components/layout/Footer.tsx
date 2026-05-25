@@ -1,14 +1,14 @@
 import React from 'react'
+import { Link } from 'react-router-dom'
+import styles from './Footer.module.css'
 
 const Footer: React.FC = () => {
   return (
     <footer>
-      <p>
-        Copyright 2026{' '}
-        <a href="https://github.com/serifpersia/ani-web" target="_blank" rel="noopener noreferrer">
-          ani-web
-        </a>
-      </p>
+      <p className={styles.purpose}>Discover anime and keep track of what you have watched.</p>
+      <Link to="/privacy" className={styles.privacyLink}>
+        Copyright 2026 · Privacy Policy
+      </Link>
     </footer>
   )
 }

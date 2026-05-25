@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { FaBars, FaSearch, FaUserCircle } from 'react-icons/fa'
 import NotificationBell from './NotificationBell'
 import Logo from '../common/Logo'
@@ -9,12 +9,13 @@ import styles from './Header.module.css'
 
 const Header: React.FC = () => {
   const { toggleSidebar } = useSidebar()
-  const { user } = useAuth()
+  const { user, guestSignInDismissed } = useAuth()
   const [query, setQuery] = useState('')
   const [visible, setVisible] = useState(true)
   const [isSearchFocused, setIsSearchFocused] = useState(false)
   const [profileImageFailed, setProfileImageFailed] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
   const hideTimerRef = useRef<NodeJS.Timeout | null>(null)
   const HIDE_DELAY_MS = 3000
 
@@ -53,6 +54,9 @@ const Header: React.FC = () => {
     }
   }
 
+  const promptGuestSignIn = user?.role === 'guest' && !guestSignInDismissed
+  const profileDestination = promptGuestSignIn ? '/login' : '/settings'
+
   return (
     <header className={`${styles.header} ${visible ? '' : styles.hidden}`}>
       <div className={styles.leftSection}>
@@ -82,7 +86,14 @@ const Header: React.FC = () => {
 
         <NotificationBell />
 
-        <Link to="/settings" className={styles.profileBtn} aria-label="Profile settings">
+        <Link
+          to={profileDestination}
+          state={
+            promptGuestSignIn ? { from: `${location.pathname}${location.search}` } : undefined
+          }
+          className={styles.profileBtn}
+          aria-label={promptGuestSignIn ? 'Sign in or continue as guest' : 'Profile settings'}
+        >
           {user?.profilePictureUrl && !profileImageFailed ? (
             <img
               src={user.profilePictureUrl}

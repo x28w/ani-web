@@ -1,0 +1,30 @@
+.purpose {
+  margin: 0 0 var(--space-3);
+  color: var(--text-tertiary);
+  font-size: var(--font-size-sm);
+}
+
+.privacyLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  color: var(--accent-light);
+  font-weight: var(--font-weight-semibold);
+  text-shadow: 0 0 10px var(--accent-glow);
+  transition:
+    color var(--transition-fast),
+    text-shadow var(--transition-fast);
+}
+
+.privacyLink:hover,
+.privacyLink:focus-visible {
+  color: var(--accent-lighter);
+  text-shadow: 0 0 18px var(--accent-glow);
+}
+
+.privacyLink:focus-visible {
+  border-radius: var(--radius-md);
+  outline: 2px solid var(--accent-light);
+  outline-offset: 2px;
+}

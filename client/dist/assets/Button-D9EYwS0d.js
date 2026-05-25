@@ -1,0 +1,1 @@
+import{D as l,u as s}from"./vendor-BO-hj43Q.js";const p=l(({variant:r="primary",size:t="md",loading:n,children:a,className:e="",disabled:o,...b},m)=>{const c=["btn",`btn-${r}`,t!=="md"&&`btn-${t}`,n&&"btn-loading",e].filter(Boolean).join(" ");return s("button",{className:c,disabled:o||n,ref:m,...b,children:n?s("span",{className:"btn-spinner"}):a})});export{p as B};

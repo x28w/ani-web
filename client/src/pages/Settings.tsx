@@ -14,6 +14,7 @@ import {
   FaCloud,
   FaDatabase,
   FaList,
+  FaSignInAlt,
   FaSignOutAlt,
   FaSave,
   FaUpload,
@@ -194,6 +195,10 @@ const Settings: React.FC = () => {
     navigate('/login', { replace: true })
   }
 
+  const handleSignIn = () => {
+    navigate('/login', { state: { from: '/settings' } })
+  }
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'general':
@@ -205,7 +210,6 @@ const Settings: React.FC = () => {
                   <h3>Profile</h3>
                   <p>Customize the identity shown in your header.</p>
                 </div>
-                <span className={styles.localBadge}>Browser only</span>
               </div>
               <div className={styles.profileRow}>
                 <div className={styles.profileAvatar}>
@@ -225,11 +229,17 @@ const Settings: React.FC = () => {
                 </div>
                 <div className={styles.profileActions}>
                   <Button onClick={triggerProfileFileSelect}>
-                    <FaUpload /> Save browser picture
+                    <FaUpload /> Profile picture
                   </Button>
-                  <Button variant="secondary" onClick={handleLogout}>
-                    <FaSignOutAlt /> Sign out
-                  </Button>
+                  {isGuest ? (
+                    <Button variant="secondary" onClick={handleSignIn}>
+                      <FaSignInAlt /> Sign in
+                    </Button>
+                  ) : (
+                    <Button variant="secondary" onClick={handleLogout}>
+                      <FaSignOutAlt /> Sign out
+                    </Button>
+                  )}
                 </div>
               </div>
               <form className={styles.profileEditor} onSubmit={handleDisplayNameSave}>

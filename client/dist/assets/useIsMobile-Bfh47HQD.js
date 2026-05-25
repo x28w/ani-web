@@ -1,1 +1,0 @@
-import{d,y as o}from"./vendor-DoiGi28K.js";const c=(n=768)=>{const[r,s]=d(window.innerWidth<n);return o(()=>{const e=window.matchMedia(`(max-width: ${n-1}px)`);s(e.matches);const t=i=>s(i.matches);return e.addEventListener?(e.addEventListener("change",t),()=>e.removeEventListener("change",t)):(e.addListener(t),()=>e.removeListener(t))},[n]),r};export{c as u};

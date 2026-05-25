@@ -10,11 +10,13 @@ export interface SiteUser {
 interface AuthContextValue {
   authenticated: boolean
   enabled: boolean
+  guestSignInDismissed: boolean
   loading: boolean
   maxProfilePictureBytes: number
   user: SiteUser | null
   login: (username: string, password: string) => Promise<void>
   browseAsGuest: () => Promise<void>
+  dismissGuestSignIn: () => void
   logout: () => Promise<void>
   refresh: () => Promise<void>
   updateDisplayName: (displayName: string) => Promise<void>
@@ -32,6 +34,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 const DEFAULT_MAX_PROFILE_PICTURE_BYTES = 1024 * 1024
 const PROFILE_PICTURE_KEY_PREFIX = 'ani-web:profile-picture:'
 const DISPLAY_NAME_KEY_PREFIX = 'ani-web:display-name:'
+const GUEST_SIGN_IN_DISMISSED_KEY = 'ani-web:guest-sign-in-dismissed'
 const MAX_DISPLAY_NAME_LENGTH = 40
 
 async function parseError(response: Response): Promise<string> {
@@ -59,6 +62,14 @@ function getStoredDisplayName(username: string): string | undefined {
   }
 }
 
+function hasDismissedGuestSignIn(): boolean {
+  try {
+    return localStorage.getItem(GUEST_SIGN_IN_DISMISSED_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
 function withStoredProfile(user: SiteUser | null): SiteUser | null {
   if (!user) return null
   const profilePictureUrl = getStoredProfilePicture(user.username) || user.profilePictureUrl
@@ -78,6 +89,7 @@ function readFileAsDataUrl(file: File): Promise<string> {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [authenticated, setAuthenticated] = useState(false)
   const [enabled, setEnabled] = useState(true)
+  const [guestSignInDismissed, setGuestSignInDismissed] = useState(hasDismissedGuestSignIn)
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<SiteUser | null>(null)
   const [maxProfilePictureBytes, setMaxProfilePictureBytes] = useState(
@@ -103,8 +115,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [applyStatus])
 
   useEffect(() => {
-    refresh().finally(() => setLoading(false))
-  }, [refresh])
+    let cancelled = false
+
+    const initializeSession = async () => {
+      const response = await fetch('/api/site-auth/status')
+      if (!response.ok) {
+        if (!cancelled) {
+          setAuthenticated(false)
+          setUser(null)
+        }
+        return
+      }
+
+      const status: StatusResponse = await response.json()
+      if (status.enabled && !status.authenticated) {
+        const guestResponse = await fetch('/api/site-auth/guest', { method: 'POST' })
+        if (guestResponse.ok) {
+          if (!cancelled) await refresh()
+          return
+        }
+      }
+
+      if (!cancelled) applyStatus(status)
+    }
+
+    initializeSession().finally(() => {
+      if (!cancelled) setLoading(false)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [applyStatus, refresh])
 
   const login = useCallback(
     async (username: string, password: string) => {
@@ -132,6 +174,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     await refresh()
   }, [refresh])
+
+  const dismissGuestSignIn = useCallback(() => {
+    try {
+      localStorage.setItem(GUEST_SIGN_IN_DISMISSED_KEY, 'true')
+    } finally {
+      setGuestSignInDismissed(true)
+    }
+  }, [])
 
   const logout = useCallback(async () => {
     await fetch('/api/site-auth/logout', { method: 'POST' })
@@ -189,11 +239,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     () => ({
       authenticated,
       enabled,
+      guestSignInDismissed,
       loading,
       maxProfilePictureBytes,
       user,
       login,
       browseAsGuest,
+      dismissGuestSignIn,
       logout,
       refresh,
       updateDisplayName,
@@ -202,11 +254,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [
       authenticated,
       enabled,
+      guestSignInDismissed,
       loading,
       maxProfilePictureBytes,
       user,
       login,
       browseAsGuest,
+      dismissGuestSignIn,
       logout,
       refresh,
       updateDisplayName,
