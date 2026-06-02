@@ -19,6 +19,7 @@ export interface Show {
   isAdult?: boolean
   rating?: string
   genres?: { name: string }[]
+  malId?: number | string
   nextAiring?: {
     episode: number
     timeUntilAiring: number

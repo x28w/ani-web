@@ -19,6 +19,7 @@ const animepahe_provider_1 = require("./providers/animepahe.provider");
 const _123anime_provider_1 = require("./providers/123anime.provider");
 const animeya_provider_1 = require("./providers/animeya.provider");
 const _2embed_provider_1 = require("./providers/2embed.provider");
+const megaplay_provider_1 = require("./providers/megaplay.provider");
 const config_1 = require("./config");
 const sync_1 = require("./sync");
 const auth_routes_1 = require("./routes/auth.routes");
@@ -35,12 +36,14 @@ const animePaheProvider = new animepahe_provider_1.AnimePaheProvider(apiCache);
 const _123AnimeProvider = new _123anime_provider_1._123AnimeProvider(apiCache);
 const animeyaProvider = new animeya_provider_1.AnimeyaProvider(apiCache);
 const twoEmbedProvider = new _2embed_provider_1.TwoEmbedProvider(apiCache);
+const megaPlayProvider = new megaplay_provider_1.MegaPlayProvider(apiCache);
 const providers = {
     allanime: allAnimeProvider,
     animepahe: animePaheProvider,
     '123anime': _123AnimeProvider,
     animeya: animeyaProvider,
     '2embed': twoEmbedProvider,
+    megaplay: megaPlayProvider,
 };
 let db;
 let isShuttingDown = false;

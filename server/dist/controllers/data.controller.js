@@ -16,6 +16,18 @@ class DataController {
         const providerName = req.query.provider || 'allanime';
         return this.providers[providerName.toLowerCase()] || this.providers['allanime'];
     }
+    async resolveMegaPlayShowId(showId, sourceShowId) {
+        if (/^\d+$/.test(showId))
+            return showId;
+        const allanime = this.providers.allanime;
+        const lookupId = sourceShowId || showId;
+        if (allanime?.getMalId && lookupId) {
+            const malId = await allanime.getMalId(lookupId);
+            if (malId)
+                return String(malId);
+        }
+        return null;
+    }
     getPopular = (0, async_handler_1.asyncHandler)(async (req, res) => {
         const timeframe = req.params.timeframe.toLowerCase();
         const data = await this.getProvider(req).getPopular(timeframe);
@@ -36,7 +48,16 @@ class DataController {
     });
     getVideo = (0, async_handler_1.asyncHandler)(async (req, res) => {
         try {
-            const urls = await this.getProvider(req).getStreamUrls(req.query.showId, req.query.episodeNumber, req.query.mode);
+            const providerName = (req.query.provider || 'allanime').toLowerCase();
+            let showId = req.query.showId;
+            if (providerName === 'megaplay') {
+                const resolved = await this.resolveMegaPlayShowId(showId, req.query.sourceShowId);
+                if (!resolved) {
+                    return res.json([]);
+                }
+                showId = resolved;
+            }
+            const urls = await this.getProvider(req).getStreamUrls(showId, req.query.episodeNumber, req.query.mode);
             res.json(urls || []);
         }
         catch (e) {

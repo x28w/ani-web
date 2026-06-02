@@ -493,7 +493,7 @@ export class AllAnimeProvider implements Provider {
     const response = await axios.post(
       API_ENDPOINT,
       {
-        query: `query($showId: String!) { show(_id: $showId) { _id, name, thumbnail, banner, description, nativeName, englishName, type, availableEpisodesDetail, score, isAdult, genres } }`,
+        query: `query($showId: String!) { show(_id: $showId) { _id, name, thumbnail, banner, description, nativeName, englishName, type, availableEpisodesDetail, score, isAdult, genres, malId } }`,
         variables: { showId },
       },
       {
@@ -522,6 +522,7 @@ export class AllAnimeProvider implements Provider {
         genres: Array.isArray(show.genres)
           ? show.genres.map((genre: string) => ({ name: genre }))
           : undefined,
+        malId: show.malId ?? undefined,
       }
     }
     return null
@@ -558,9 +559,9 @@ export class AllAnimeProvider implements Provider {
     return null
   }
 
-  async getSkipTimes(showId: string, episodeNumber: string): Promise<SkipIntervals> {
+  async getMalId(showId: string): Promise<number | null> {
     try {
-      const malIdResponse = await axios.post(
+      const response = await axios.post(
         API_ENDPOINT,
         {
           query: `query($showId: String!) { show(_id: $showId) { malId } }`,
@@ -571,11 +572,21 @@ export class AllAnimeProvider implements Provider {
           timeout: 10000,
         }
       )
-      const responseData = malIdResponse.data
+      const responseData = response.data
       if (responseData?.data?.tobeparsed) {
         responseData.data = this.decryptTobeparsed(responseData.data.tobeparsed)
       }
       const malId = responseData?.data?.show?.malId
+      return typeof malId === 'number' ? malId : malId ? Number(malId) : null
+    } catch (error) {
+      logger.warn({ err: error, showId }, 'Failed to resolve MAL id from AllAnime')
+      return null
+    }
+  }
+
+  async getSkipTimes(showId: string, episodeNumber: string): Promise<SkipIntervals> {
+    try {
+      const malId = await this.getMalId(showId)
       if (!malId) return { found: false, results: [] }
       const response = await axios.get(
         `https://api.aniskip.com/v1/skip-times/${malId}/${episodeNumber}?types=op&types=ed`,

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
 import { Provider } from '../providers/provider.interface'
+import { AllAnimeProvider } from '../providers/allanime.provider'
 import { genres, tags, studios } from '../constants.json'
 import logger from '../logger'
 import { asyncHandler } from '../utils/async-handler'
@@ -10,6 +11,22 @@ export class DataController {
   private getProvider(req: Request): Provider {
     const providerName = (req.query.provider as string) || 'allanime'
     return this.providers[providerName.toLowerCase()] || this.providers['allanime']
+  }
+
+  private async resolveMegaPlayShowId(
+    showId: string,
+    sourceShowId?: string
+  ): Promise<string | null> {
+    if (/^\d+$/.test(showId)) return showId
+
+    const allanime = this.providers.allanime as AllAnimeProvider
+    const lookupId = sourceShowId || showId
+    if (allanime?.getMalId && lookupId) {
+      const malId = await allanime.getMalId(lookupId)
+      if (malId) return String(malId)
+    }
+
+    return null
   }
 
   getPopular = asyncHandler(async (req: Request, res: Response) => {
@@ -43,8 +60,22 @@ export class DataController {
 
   getVideo = asyncHandler(async (req: Request, res: Response) => {
     try {
+      const providerName = ((req.query.provider as string) || 'allanime').toLowerCase()
+      let showId = req.query.showId as string
+
+      if (providerName === 'megaplay') {
+        const resolved = await this.resolveMegaPlayShowId(
+          showId,
+          req.query.sourceShowId as string | undefined
+        )
+        if (!resolved) {
+          return res.json([])
+        }
+        showId = resolved
+      }
+
       const urls = await this.getProvider(req).getStreamUrls(
-        req.query.showId as string,
+        showId,
         req.query.episodeNumber as string,
         req.query.mode as 'sub' | 'dub'
       )

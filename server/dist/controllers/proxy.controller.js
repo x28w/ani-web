@@ -292,6 +292,42 @@ class ProxyController {
             }
         }
     };
+    handleMegaPlayEmbed = (req, res) => {
+        const malId = String(req.query.malId || req.query.showId || '');
+        const episode = String(req.query.episode || req.query.episodeNumber || '');
+        const mode = req.query.mode === 'dub' ? 'dub' : 'sub';
+        if (!/^\d+$/.test(malId) || !/^\d+$/.test(episode)) {
+            return res.status(400).send('Invalid MegaPlay embed parameters');
+        }
+        const targetUrl = `https://megaplay.buzz/stream/mal/${malId}/${episode}/${mode}`;
+        const safeTarget = targetUrl.replace(/"/g, '&quot;');
+        const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="referrer" content="origin" />
+  <title>MegaPlay</title>
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
+    iframe { border: 0; width: 100%; height: 100%; display: block; }
+  </style>
+</head>
+<body>
+  <iframe
+    src="${safeTarget}"
+    allow="autoplay; fullscreen; picture-in-picture"
+    allowfullscreen
+    referrerpolicy="origin"
+  ></iframe>
+</body>
+</html>`;
+        return res
+            .status(200)
+            .set('Content-Type', 'text/html; charset=utf-8')
+            .set('Cache-Control', 'private, max-age=300')
+            .send(html);
+    };
     sendPlaceholder(res) {
         const possiblePaths = [
             path_1.default.join(config_1.CONFIG.PACKAGE_ROOT, 'client/public/placeholder.svg'),

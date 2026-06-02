@@ -6,6 +6,7 @@ const proxy_controller_1 = require("../controllers/proxy.controller");
 function createProxyRouter() {
     const router = (0, express_1.Router)();
     const controller = new proxy_controller_1.ProxyController();
+    router.get('/megaplay-embed', controller.handleMegaPlayEmbed);
     router.get('/proxy', controller.handleProxy);
     router.get('/embed-proxy', controller.handleEmbedProxy);
     router.get('/subtitle-proxy', controller.handleSubtitleProxy);

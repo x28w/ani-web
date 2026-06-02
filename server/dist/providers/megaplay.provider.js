@@ -5,6 +5,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MegaPlayProvider = void 0;
 const logger_1 = __importDefault(require("../logger"));
+const FETCH_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    Accept: 'application/json',
+};
 class MegaPlayProvider {
     name = 'MegaPlay';
     jikanBase = 'https://api.jikan.moe/v4';
@@ -51,7 +55,7 @@ class MegaPlayProvider {
             const rawQuery = options.query || '';
             const query = rawQuery.replace(/[""]/g, '').replace(/[']/g, '').replace(/\s+/g, ' ').trim();
             const url = `${this.jikanBase}/anime?q=${encodeURIComponent(query)}`;
-            const response = await fetch(url);
+            const response = await fetch(url, { headers: FETCH_HEADERS });
             const data = (await response.json());
             if (!data.data || data.data.length === 0)
                 return [];
@@ -89,7 +93,7 @@ class MegaPlayProvider {
             if (cached)
                 return cached;
             const url = `${this.jikanBase}/anime/${showId}`;
-            const response = await fetch(url);
+            const response = await fetch(url, { headers: FETCH_HEADERS });
             if (!response.ok)
                 return null;
             const data = (await response.json());
@@ -122,7 +126,7 @@ class MegaPlayProvider {
         if (episodeNumber === '0') {
             targetEpisode = '1';
         }
-        const streamUrl = `${this.megaPlayBase}/${showId}/${targetEpisode}/${mode}`;
+        const streamUrl = `/api/megaplay-embed?malId=${showId}&episode=${targetEpisode}&mode=${mode}`;
         return [
             {
                 sourceName: `MegaPlay (${mode.toUpperCase()})`,
@@ -143,7 +147,7 @@ class MegaPlayProvider {
             if (!/^\d+$/.test(showId))
                 return null;
             const url = `${this.jikanBase}/anime/${showId}`;
-            const response = await fetch(url);
+            const response = await fetch(url, { headers: FETCH_HEADERS });
             const data = (await response.json());
             if (!data.data)
                 return null;
@@ -170,7 +174,7 @@ class MegaPlayProvider {
     async getPopular(_timeframe, page, size) {
         try {
             const url = `${this.jikanBase}/top/anime?page=${page || 1}&limit=${size || 10}`;
-            const response = await fetch(url);
+            const response = await fetch(url, { headers: FETCH_HEADERS });
             const data = (await response.json());
             if (!data.data)
                 return [];
@@ -194,7 +198,7 @@ class MegaPlayProvider {
             const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
             const day = days[date.getDay()];
             const url = `${this.jikanBase}/schedules?filter=${day}`;
-            const response = await fetch(url);
+            const response = await fetch(url, { headers: FETCH_HEADERS });
             const data = (await response.json());
             if (!data.data)
                 return [];
@@ -216,7 +220,7 @@ class MegaPlayProvider {
     async getSeasonal(page) {
         try {
             const url = `${this.jikanBase}/seasons/now?page=${page}`;
-            const response = await fetch(url);
+            const response = await fetch(url, { headers: FETCH_HEADERS });
             const data = (await response.json());
             if (!data.data)
                 return [];
@@ -238,7 +242,7 @@ class MegaPlayProvider {
     async getLatestReleases(page, size) {
         try {
             const url = `${this.jikanBase}/top/anime?filter=airing&page=${page || 1}&limit=${size || 10}`;
-            const response = await fetch(url);
+            const response = await fetch(url, { headers: FETCH_HEADERS });
             const data = (await response.json());
             if (!data.data)
                 return [];

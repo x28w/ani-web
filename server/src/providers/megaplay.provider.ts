@@ -37,6 +37,12 @@ interface JikanSingleResponse {
   data: JikanAnime
 }
 
+const FETCH_HEADERS = {
+  'User-Agent':
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  Accept: 'application/json',
+}
+
 export class MegaPlayProvider implements Provider {
   name = 'MegaPlay'
   private jikanBase = 'https://api.jikan.moe/v4'
@@ -89,7 +95,7 @@ export class MegaPlayProvider implements Provider {
       const query = rawQuery.replace(/[""]/g, '').replace(/[']/g, '').replace(/\s+/g, ' ').trim()
       const url = `${this.jikanBase}/anime?q=${encodeURIComponent(query)}`
 
-      const response = await fetch(url)
+      const response = await fetch(url, { headers: FETCH_HEADERS })
       const data = (await response.json()) as JikanResponse
 
       if (!data.data || data.data.length === 0) return []
@@ -130,7 +136,7 @@ export class MegaPlayProvider implements Provider {
       if (cached) return cached
 
       const url = `${this.jikanBase}/anime/${showId}`
-      const response = await fetch(url)
+      const response = await fetch(url, { headers: FETCH_HEADERS })
 
       if (!response.ok) return null
 
@@ -173,7 +179,7 @@ export class MegaPlayProvider implements Provider {
       targetEpisode = '1'
     }
 
-    const streamUrl = `${this.megaPlayBase}/${showId}/${targetEpisode}/${mode}`
+    const streamUrl = `/api/megaplay-embed?malId=${showId}&episode=${targetEpisode}&mode=${mode}`
 
     return [
       {
@@ -196,7 +202,7 @@ export class MegaPlayProvider implements Provider {
       if (!/^\d+$/.test(showId)) return null
 
       const url = `${this.jikanBase}/anime/${showId}`
-      const response = await fetch(url)
+      const response = await fetch(url, { headers: FETCH_HEADERS })
       const data = (await response.json()) as JikanSingleResponse
 
       if (!data.data) return null
@@ -228,7 +234,7 @@ export class MegaPlayProvider implements Provider {
   ): Promise<Show[]> {
     try {
       const url = `${this.jikanBase}/top/anime?page=${page || 1}&limit=${size || 10}`
-      const response = await fetch(url)
+      const response = await fetch(url, { headers: FETCH_HEADERS })
       const data = (await response.json()) as JikanResponse
 
       if (!data.data) return []
@@ -253,7 +259,7 @@ export class MegaPlayProvider implements Provider {
       const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
       const day = days[date.getDay()]
       const url = `${this.jikanBase}/schedules?filter=${day}`
-      const response = await fetch(url)
+      const response = await fetch(url, { headers: FETCH_HEADERS })
       const data = (await response.json()) as JikanResponse
 
       if (!data.data) return []
@@ -276,7 +282,7 @@ export class MegaPlayProvider implements Provider {
   async getSeasonal(page: number): Promise<Show[]> {
     try {
       const url = `${this.jikanBase}/seasons/now?page=${page}`
-      const response = await fetch(url)
+      const response = await fetch(url, { headers: FETCH_HEADERS })
       const data = (await response.json()) as JikanResponse
 
       if (!data.data) return []
@@ -299,7 +305,7 @@ export class MegaPlayProvider implements Provider {
   async getLatestReleases(page?: number, size?: number): Promise<Show[]> {
     try {
       const url = `${this.jikanBase}/top/anime?filter=airing&page=${page || 1}&limit=${size || 10}`
-      const response = await fetch(url)
+      const response = await fetch(url, { headers: FETCH_HEADERS })
       const data = (await response.json()) as JikanResponse
 
       if (!data.data) return []
@@ -327,7 +333,7 @@ export class MegaPlayProvider implements Provider {
     try {
       if (!/^\d+$/.test(showId)) return { status: '' }
 
-      const response = await fetch(`${this.jikanBase}/anime/${showId}`)
+      const response = await fetch(`${this.jikanBase}/anime/${showId}`, { headers: FETCH_HEADERS })
       const data = (await response.json()) as JikanSingleResponse
       return { status: data.data?.status || '' }
     } catch {

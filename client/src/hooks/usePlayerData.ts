@@ -192,7 +192,7 @@ export const usePlayerData = (
       uiState.currentEpisode,
       uiState.selectedProvider,
       uiState.currentMode,
-      showData?.showMeta?.name,
+      showData?.showMeta?.malId,
       twoEmbedSeasonOverride,
     ],
     queryFn: async () => {
@@ -205,6 +205,13 @@ export const usePlayerData = (
           uiState.selectedProvider
         )
       ) {
+        if (uiState.selectedProvider === 'megaplay') {
+          const metaMalId = showData?.showMeta?.malId
+          if (metaMalId && /^\d+$/.test(String(metaMalId))) {
+            providerShowId = String(metaMalId)
+          }
+        }
+
         const names = showData?.showMeta?.names
         // AlAnime's `name` field is often the native Japanese script (e.g. "ブリーチ"
         // for Bleach), which gets mapped to names.romaji. Sending katakana/kanji to
@@ -319,22 +326,34 @@ export const usePlayerData = (
             }
           }
 
-          const minimumScore = uiState.selectedProvider === '2embed' ? 40 : 100
+          const minimumScore =
+            uiState.selectedProvider === '2embed' || uiState.selectedProvider === 'megaplay'
+              ? 40
+              : 100
           if (bestMatch && bestScore >= minimumScore) {
             providerShowId = bestMatch.session || bestMatch.id
-          } else {
+          } else if (uiState.selectedProvider !== 'megaplay') {
             providerMatchFound = false
           }
-        } else {
+        } else if (uiState.selectedProvider !== 'megaplay') {
           providerMatchFound = false
         }
       }
 
+      const videoQuery = new URLSearchParams({
+        showId: providerShowId,
+        episodeNumber: uiState.currentEpisode,
+        mode: uiState.currentMode,
+        provider: uiState.selectedProvider,
+      })
+      if (uiState.selectedProvider === 'megaplay' && showId) {
+        videoQuery.set('sourceShowId', showId)
+        providerMatchFound = true
+      }
+
       const [sources, serverProgress, preferredSourceData, skipTimesData] = await Promise.all([
         providerMatchFound
-          ? fetchApi(
-              `/api/video?showId=${providerShowId}&episodeNumber=${uiState.currentEpisode}&mode=${uiState.currentMode}&provider=${uiState.selectedProvider}`
-            )
+          ? fetchApi(`/api/video?${videoQuery.toString()}`)
           : Promise.resolve([]),
         fetchApi(`/api/episode-progress/${showId}/${uiState.currentEpisode}`).catch(() => null),
         fetchApi(`/api/settings?key=preferredSource`).catch(() => null),

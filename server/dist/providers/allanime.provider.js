@@ -458,7 +458,7 @@ class AllAnimeProvider {
     }
     async getShowMeta(showId) {
         const response = await axios_1.default.post(API_ENDPOINT, {
-            query: `query($showId: String!) { show(_id: $showId) { _id, name, thumbnail, banner, description, nativeName, englishName, type, availableEpisodesDetail, score, isAdult, genres } }`,
+            query: `query($showId: String!) { show(_id: $showId) { _id, name, thumbnail, banner, description, nativeName, englishName, type, availableEpisodesDetail, score, isAdult, genres, malId } }`,
             variables: { showId },
         }, {
             headers: { 'User-Agent': USER_AGENT, Referer: REFERER },
@@ -485,6 +485,7 @@ class AllAnimeProvider {
                 genres: Array.isArray(show.genres)
                     ? show.genres.map((genre) => ({ name: genre }))
                     : undefined,
+                malId: show.malId ?? undefined,
             };
         }
         return null;
@@ -516,20 +517,30 @@ class AllAnimeProvider {
         }
         return null;
     }
-    async getSkipTimes(showId, episodeNumber) {
+    async getMalId(showId) {
         try {
-            const malIdResponse = await axios_1.default.post(API_ENDPOINT, {
+            const response = await axios_1.default.post(API_ENDPOINT, {
                 query: `query($showId: String!) { show(_id: $showId) { malId } }`,
                 variables: { showId },
             }, {
                 headers: { 'User-Agent': USER_AGENT, Referer: REFERER },
                 timeout: 10000,
             });
-            const responseData = malIdResponse.data;
+            const responseData = response.data;
             if (responseData?.data?.tobeparsed) {
                 responseData.data = this.decryptTobeparsed(responseData.data.tobeparsed);
             }
             const malId = responseData?.data?.show?.malId;
+            return typeof malId === 'number' ? malId : malId ? Number(malId) : null;
+        }
+        catch (error) {
+            logger_1.default.warn({ err: error, showId }, 'Failed to resolve MAL id from AllAnime');
+            return null;
+        }
+    }
+    async getSkipTimes(showId, episodeNumber) {
+        try {
+            const malId = await this.getMalId(showId);
             if (!malId)
                 return { found: false, results: [] };
             const response = await axios_1.default.get(`https://api.aniskip.com/v1/skip-times/${malId}/${episodeNumber}?types=op&types=ed`, {
