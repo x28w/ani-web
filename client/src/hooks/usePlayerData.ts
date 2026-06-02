@@ -319,15 +319,9 @@ export const usePlayerData = (
             }
           }
 
-          const minimumScore =
-            uiState.selectedProvider === '2embed' || uiState.selectedProvider === 'megaplay'
-              ? 40
-              : 100
+          const minimumScore = uiState.selectedProvider === '2embed' ? 40 : 100
           if (bestMatch && bestScore >= minimumScore) {
-            providerShowId =
-              uiState.selectedProvider === 'megaplay'
-                ? bestMatch.id
-                : bestMatch.session || bestMatch.id
+            providerShowId = bestMatch.session || bestMatch.id
           } else {
             providerMatchFound = false
           }

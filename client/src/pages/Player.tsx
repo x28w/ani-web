@@ -919,11 +919,10 @@ const Player: React.FC = () => {
                 className={styles.videoIframe}
                 allow="autoplay; fullscreen; picture-in-picture"
                 allowFullScreen
-                referrerPolicy="no-referrer-when-downgrade"
                 sandbox={
                   state.selectedSource.sandbox
                     ? `${state.selectedSource.sandbox} allow-fullscreen allow-popups allow-popups-to-escape-sandbox`
-                    : 'allow-scripts allow-same-origin allow-presentation allow-fullscreen allow-popups allow-popups-to-escape-sandbox'
+                    : undefined
                 }
               ></iframe>
             )
