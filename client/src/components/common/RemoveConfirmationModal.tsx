@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Button } from './Button'
 import { Modal as ModalUI } from './Modal'
+import styles from './RemoveConfirmationModal.module.css'
 
 interface RemoveConfirmationModalProps {
   isOpen: boolean
@@ -34,26 +35,33 @@ export default function RemoveConfirmationModal({
     })
   }
 
-  const title = scenario === 'continueWatching' ? 'Reset Progress' : 'Remove from Watchlist'
+  const title = scenario === 'continueWatching' ? 'Remove from queue' : 'Remove from watchlist'
   const message =
     scenario === 'continueWatching'
-      ? `Are you sure you want to remove your watch progress for "${animeName}"?`
+      ? `Remove "${animeName}" from Continue Watching?`
       : `Are you sure you want to remove "${animeName}" from your watchlist?`
 
   return (
-    <ModalUI isOpen={isOpen} onClose={onClose} title={title}>
-      <div style={{ color: 'var(--text-secondary)' }}>
-        <p>{message}</p>
+    <ModalUI
+      isOpen={isOpen}
+      onClose={onClose}
+      title={title}
+      width="sm"
+      footer={
+        <div className={styles.actions}>
+          <Button variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={handleConfirm}>
+            Remove
+          </Button>
+        </div>
+      }
+    >
+      <div className={styles.body}>
+        <p className={styles.message}>{message}</p>
         {scenario === 'continueWatching' && (
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              margin: '1rem 0',
-              cursor: 'pointer',
-            }}
-          >
+          <label className={styles.checkboxRow}>
             <input
               type="checkbox"
               checked={removeFromWatchlist}
@@ -63,15 +71,7 @@ export default function RemoveConfirmationModal({
           </label>
         )}
         {scenario === 'watchlist' && (
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              margin: '1rem 0',
-              cursor: 'pointer',
-            }}
-          >
+          <label className={styles.checkboxRow}>
             <input
               type="checkbox"
               checked={rememberPreference}
@@ -80,14 +80,6 @@ export default function RemoveConfirmationModal({
             Remember my choice
           </label>
         )}
-        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
-          <Button variant="secondary" onClick={onClose} style={{ flex: 1 }}>
-            No
-          </Button>
-          <Button variant="danger" onClick={handleConfirm} style={{ flex: 1 }}>
-            Yes
-          </Button>
-        </div>
       </div>
     </ModalUI>
   )

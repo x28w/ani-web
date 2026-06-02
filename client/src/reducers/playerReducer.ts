@@ -16,7 +16,8 @@ const getPreferredProvider = (): PlayerState['selectedProvider'] => {
   return provider === 'animepahe' ||
     provider === '123anime' ||
     provider === 'animeya' ||
-    provider === '2embed'
+    provider === '2embed' ||
+    provider === 'megaplay'
     ? provider
     : 'allanime'
 }

@@ -138,7 +138,6 @@ const AnimeHeroCarousel: React.FC<AnimeHeroCarouselProps> = ({
       event.preventDefault()
       move('previous', true)
     }
-
     if (event.key === 'ArrowRight') {
       event.preventDefault()
       move('next', true)
@@ -160,10 +159,29 @@ const AnimeHeroCarousel: React.FC<AnimeHeroCarouselProps> = ({
         aria-hidden="true"
       />
       <div className={styles.overlay} />
+
       {items.length > 1 && (
-        <div className={styles.autoplayProgress} aria-hidden="true">
-          <span key={`${activeIndex}-${autoplayResetKey}`} />
-        </div>
+        <>
+          <div className={styles.autoplayProgress} aria-hidden="true">
+            <span key={`${activeIndex}-${autoplayResetKey}`} />
+          </div>
+          <button
+            type="button"
+            className={`${styles.sideArrow} ${styles.sideArrowLeft}`}
+            onClick={() => move('previous', true)}
+            aria-label="Previous featured anime"
+          >
+            <FaChevronLeft />
+          </button>
+          <button
+            type="button"
+            className={`${styles.sideArrow} ${styles.sideArrowRight}`}
+            onClick={() => move('next', true)}
+            aria-label="Next featured anime"
+          >
+            <FaChevronRight />
+          </button>
+        </>
       )}
 
       <div className={styles.content}>
@@ -201,42 +219,22 @@ const AnimeHeroCarousel: React.FC<AnimeHeroCarouselProps> = ({
             <FaInfoCircle /> Details
           </Link>
         </div>
-      </div>
 
-      {items.length > 1 && (
-        <div className={styles.navigation}>
-          <div className={styles.arrows}>
-            <button
-              type="button"
-              className={styles.arrowButton}
-              onClick={() => move('previous', true)}
-              aria-label="Previous featured anime"
-            >
-              <FaChevronLeft />
-            </button>
-            <button
-              type="button"
-              className={styles.arrowButton}
-              onClick={() => move('next', true)}
-              aria-label="Next featured anime"
-            >
-              <FaChevronRight />
-            </button>
-          </div>
-          <div className={styles.dots} aria-label="Featured anime slides">
+        {items.length > 1 && (
+          <div className={styles.dotRow} aria-label="Featured slides">
             {items.map((anime, index) => (
               <button
                 type="button"
                 key={anime._id || anime.id}
                 className={index === activeIndex ? styles.activeDot : ''}
                 onClick={() => selectSlide(index)}
-                aria-label={`Show featured anime ${index + 1}`}
+                aria-label={`Slide ${index + 1}`}
                 aria-current={index === activeIndex ? 'true' : undefined}
               />
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </section>
   )
 }

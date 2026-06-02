@@ -1,12 +1,45 @@
 .page {
-  padding-bottom: var(--space-6);
+  width: 100%;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-8);
+  flex-wrap: wrap;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent-light);
+}
+
+.pageTitle {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-xl);
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.pageSub {
+  margin: var(--space-2) 0 0;
+  color: var(--text-tertiary);
+  font-size: var(--font-size-sm);
 }
 
 .statsGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-4);
-  margin-bottom: var(--space-10);
+  margin-bottom: var(--space-8);
 }
 
 .statCard {
@@ -48,8 +81,8 @@
 .contentGrid {
   display: grid;
   grid-template-columns: minmax(360px, 1.55fr) minmax(290px, 1fr);
-  gap: var(--space-10);
-  margin-bottom: var(--space-10);
+  gap: var(--space-8);
+  margin-bottom: var(--space-8);
 }
 
 .section {

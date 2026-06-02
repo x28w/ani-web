@@ -143,6 +143,27 @@
   background: rgba(0, 0, 0, 0.5);
 }
 
+.speedBoostBadge {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  z-index: 35;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.45rem 0.7rem;
+  color: white;
+  font-size: var(--font-size-sm);
+  font-weight: 800;
+  background: rgba(139, 92, 246, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--radius-full);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  pointer-events: none;
+}
+
 .loadingDots {
   display: flex;
   gap: 10px;

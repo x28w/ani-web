@@ -1,4 +1,5 @@
 import React from 'react'
+import { createPortal } from 'react-dom'
 import { useEffect } from 'preact/hooks'
 import './Modal.css'
 
@@ -28,14 +29,15 @@ export function Modal({ isOpen, onClose, title, children, footer, width = 'md' }
 
   if (!isOpen) return null
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className={`modal-content modal-${width}`} onClick={(e) => e.stopPropagation()}>
         {title && <h2 className="modal-title">{title}</h2>}
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-footer">{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -50,9 +52,10 @@ export function ModalOverlay({
 }) {
   if (!isOpen) return null
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       {children}
-    </div>
+    </div>,
+    document.body
   )
 }

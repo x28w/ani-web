@@ -11,6 +11,15 @@
   letter-spacing: 0;
 }
 
+.pageEyebrow {
+  margin: 0 0 var(--space-2);
+  color: var(--accent-light);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .pageSubtitle {
   color: var(--text-tertiary);
   font-size: var(--font-size-sm);
@@ -55,10 +64,10 @@
 }
 
 .sidebarItem.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: white;
-  box-shadow: 0 4px 15px var(--accent-glow);
+  background: rgba(139, 92, 246, 0.14);
+  border-color: var(--border-accent);
+  color: var(--accent-light);
+  box-shadow: none;
 }
 
 .sidebarItem svg {
@@ -78,13 +87,10 @@
 }
 
 .sectionCard {
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  padding: var(--space-8);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  padding: var(--space-6) var(--space-8);
   border-radius: var(--radius-xl);
-  box-shadow: var(--glass-shadow);
 }
 
 .profileCard {
@@ -106,14 +112,10 @@
 }
 
 .sectionHeading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-5);
 }
 
-.sectionHeading p {
+.sectionHeading h3 {
   margin: 0;
 }
 

@@ -121,39 +121,102 @@
   transform: scale(0.9);
 }
 
-.profileBtn {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 2px solid var(--border-primary);
-  cursor: pointer;
-  transition: all var(--transition-base);
+/* queueBtn styles removed (merged into user menu) */
+
+.userMenu {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
 }
 
-.profileBtn:hover {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(138, 79, 255, 0.2);
+.userMenuBtn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 44px;
+  padding: 0 10px 0 6px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-primary);
+  background: var(--bg-tertiary);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
 }
 
-.profileBtn:active {
-  transform: scale(0.95);
+.userMenuBtn:hover {
+  border-color: var(--border-accent);
+  background: var(--bg-elevated);
 }
 
-.profileBtn svg {
-  color: var(--text-primary);
-  font-size: 1.15rem;
-}
-
-.profileImg {
-  width: 100%;
-  height: 100%;
+.userAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   object-fit: cover;
+  border: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
 }
+
+.chevron {
+  color: var(--text-tertiary);
+  font-size: 0.9rem;
+}
+
+.queueDot {
+  position: absolute;
+  top: 6px;
+  left: 28px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg-tertiary);
+}
+
+.userDropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  min-width: 190px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  padding: 6px;
+  z-index: 1500;
+}
+
+.menuItem {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 10px 10px;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.menuItem:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.menuBadge {
+  min-width: 22px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+
+/* profileBtn styles removed (replaced by user menu) */
 
 .signInBtn {
   display: flex;
@@ -222,9 +285,16 @@
     width: calc(100vw - 140px);
   }
 
-  .profileBtn {
-    width: 36px;
+  /* profileBtn styles removed */
+
+  .userMenuBtn {
     height: 36px;
+    padding-right: 8px;
+  }
+
+  .userAvatar {
+    width: 28px;
+    height: 28px;
   }
 
   .signInBtn {

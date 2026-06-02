@@ -23,6 +23,9 @@ interface AnimeItem {
 
 interface Top10ListProps {
   title: string
+  /** Lock to one timeframe (hides the dropdown). */
+  fixedTimeframe?: string
+  eyebrow?: string
 }
 
 const timeframeOptions = [
@@ -32,11 +35,12 @@ const timeframeOptions = [
   { value: 'daily', label: 'Daily' },
 ]
 
-export default function Top10List({ title }: Top10ListProps) {
+export default function Top10List({ title, fixedTimeframe, eyebrow }: Top10ListProps) {
   const [top10List, setTop10List] = useState<AnimeItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [timeframe, setTimeframe] = useState(() => {
+    if (fixedTimeframe) return fixedTimeframe
     return localStorage.getItem('top10_timeframe') || 'all'
   })
   const { titlePreference } = useTitlePreference()
@@ -70,8 +74,8 @@ export default function Top10List({ title }: Top10ListProps) {
   }, [])
 
   useEffect(() => {
-    localStorage.setItem('top10_timeframe', timeframe)
-  }, [timeframe])
+    if (!fixedTimeframe) localStorage.setItem('top10_timeframe', timeframe)
+  }, [fixedTimeframe, timeframe])
 
   useEffect(() => {
     const fetchTop10List = async () => {
@@ -112,8 +116,11 @@ export default function Top10List({ title }: Top10ListProps) {
       {/* Header — matches AnimeSection header style */}
       <div className={styles['section-header']}>
         <div className={styles['title-wrapper']}>
-          <div className="section-title" style={{ marginBottom: 0 }}>
-            {title}
+          <div>
+            {eyebrow && <span className="section-eyebrow">{eyebrow}</span>}
+            <div className="section-title" style={{ marginBottom: 0 }}>
+              {title}
+            </div>
           </div>
           <div className={styles['nav-arrows']}>
             <button
@@ -133,19 +140,21 @@ export default function Top10List({ title }: Top10ListProps) {
           </div>
         </div>
 
-        <div className={styles['header-actions']}>
-          <select
-            className={styles.timeSelect}
-            value={timeframe}
-            onChange={(e) => setTimeframe(e.currentTarget.value)}
-          >
-            {timeframeOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        {!fixedTimeframe && (
+          <div className={styles['header-actions']}>
+            <select
+              className={styles.timeSelect}
+              value={timeframe}
+              onChange={(e) => setTimeframe(e.currentTarget.value)}
+            >
+              {timeframeOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Carousel */}

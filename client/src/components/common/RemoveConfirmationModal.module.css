@@ -1,0 +1,46 @@
+.body {
+  color: var(--text-secondary);
+}
+
+.message {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: var(--space-4);
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkboxRow input {
+  accent-color: var(--accent);
+}
+
+.actions {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.actions :global(.btn) {
+  flex: 1 1 0;
+  min-width: 0;
+  width: 100%;
+  min-height: 40px;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}
+
+@media (max-width: 380px) {
+  .actions {
+    flex-direction: column;
+  }
+}
+

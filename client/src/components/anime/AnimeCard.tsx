@@ -1,9 +1,10 @@
 import React, { memo, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { FaMicrophone, FaClosedCaptioning, FaTimes, FaInfo } from 'react-icons/fa'
+import { FaMicrophone, FaClosedCaptioning, FaTimes, FaInfo, FaPlay, FaStar } from 'react-icons/fa'
 import AnimePopup from './AnimePopup'
 
 import { fixThumbnailUrl, formatTime } from '../../lib/utils'
+import { resolveShowId } from '../../lib/showId'
 import { useTitlePreference } from '../../contexts/TitlePreferenceContext'
 import styles from './AnimeCard.module.css'
 import useIsMobile from '../../hooks/useIsMobile'
@@ -31,6 +32,7 @@ interface Anime {
   }
   isAdult?: boolean
   rating?: string
+  score?: number
 }
 
 interface AnimeCardConfig {
@@ -152,10 +154,10 @@ const AnimeCard: React.FC<AnimeCardProps> = memo(
       (e: React.MouseEvent) => {
         e.preventDefault()
         e.stopPropagation()
-        const id = anime.id || anime.showId || anime._id
-        if (onRemove) onRemove(id)
+        const id = resolveShowId(anime)
+        if (onRemove && id) onRemove(id)
       },
-      [onRemove, anime.id, anime.showId, anime._id]
+      [onRemove, anime]
     )
 
     const displayEpisodeCount = (() => {
@@ -218,9 +220,26 @@ const AnimeCard: React.FC<AnimeCardProps> = memo(
               onLoad={() => setIsLoaded(true)}
             />
 
+            {!lowEndMode && !isMobile && (
+              <div className={styles.playOverlay} aria-hidden>
+                <FaPlay />
+              </div>
+            )}
+
             {!isMobile && (
               <>
                 {showTypeBadge && <div className={styles.typeBadge}>{anime.type || 'TV'}</div>}
+
+                {anime.score != null && anime.score > 0 && (
+                  <div className={styles.scoreBadge}>
+                    <FaStar aria-hidden />
+                    {typeof anime.score === 'number' ? anime.score.toFixed(1) : anime.score}
+                  </div>
+                )}
+
+                {hasNewEpisodes && (
+                  <div className={styles.newBadge}>NEW</div>
+                )}
 
                 {showEpBadge && progressString && (
                   <div className={styles.epBadge}>{progressString}</div>

@@ -18,7 +18,6 @@ import {
   FaSignOutAlt,
   FaSave,
   FaUpload,
-  FaUserCircle,
 } from 'react-icons/fa'
 import { useLowEndMode } from '../contexts/LowEndModeContext'
 import { useAuth } from '../contexts/AuthContext'
@@ -206,22 +205,19 @@ const Settings: React.FC = () => {
           <div className={styles.tabContent}>
             <div className={`${styles.sectionCard} ${styles.profileCard}`}>
               <div className={styles.sectionHeading}>
-                <div>
-                  <h3>Profile</h3>
-                  <p>Customize the identity shown in your header.</p>
-                </div>
+                <h3>Profile</h3>
               </div>
               <div className={styles.profileRow}>
                 <div className={styles.profileAvatar}>
-                  {user?.profilePictureUrl && !profileImageFailed ? (
-                    <img
-                      src={user.profilePictureUrl}
-                      alt={user.displayName}
-                      onError={() => setProfileImageFailed(true)}
-                    />
-                  ) : (
-                    <FaUserCircle />
-                  )}
+                  <img
+                    src={
+                      user?.profilePictureUrl && !profileImageFailed
+                        ? user.profilePictureUrl
+                        : '/guest-avatar.png'
+                    }
+                    alt={user?.displayName || user?.username || 'Profile'}
+                    onError={() => setProfileImageFailed(true)}
+                  />
                 </div>
                 <div className={styles.profileDetails}>
                   <h4>{user?.displayName || user?.username}</h4>
@@ -378,8 +374,9 @@ const Settings: React.FC = () => {
   return (
     <div className="page-container">
       <div className={styles.settingsHeader}>
+        <p className={styles.pageEyebrow}>Account</p>
         <h1 className={styles.pageTitle}>Settings</h1>
-        <p className={styles.pageSubtitle}>Profile, viewing preferences, and account controls</p>
+        <p className={styles.pageSubtitle}>Profile, playback, and privacy — kept in one place.</p>
       </div>
 
       <div className={styles.settingsLayout}>

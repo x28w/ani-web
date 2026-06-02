@@ -6,9 +6,16 @@ interface EpisodeListProps {
   currentEpisode?: string
   watchedEpisodes: string[]
   onEpisodeClick: (ep: string) => void
+  compact?: boolean
 }
 
-const EpisodeList = ({ episodes, currentEpisode, watchedEpisodes, onEpisodeClick }) => {
+const EpisodeList = ({
+  episodes,
+  currentEpisode,
+  watchedEpisodes,
+  onEpisodeClick,
+  compact = false,
+}) => {
   const [selectedRange, setSelectedRange] = useState(0)
 
   const episodeRanges = useMemo(() => {
@@ -33,8 +40,8 @@ const EpisodeList = ({ episodes, currentEpisode, watchedEpisodes, onEpisodeClick
 
   return (
     <div className={styles.episodeListContainer}>
-      <div className={styles.episodeListHeader}>
-        <h3 className={styles.episodeListTitle}>Episodes</h3>
+      <div className={`${styles.episodeListHeader} ${compact ? styles.compactHeader : ''}`}>
+        {!compact && <h3 className={styles.episodeListTitle}>Episodes</h3>}
         {episodeRanges.length > 0 && (
           <div className={styles.rangeSelector}>
             {episodeRanges.map((range, index) => (

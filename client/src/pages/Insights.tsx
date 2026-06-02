@@ -87,8 +87,20 @@ const Insights: React.FC = () => {
     })
   }, [data?.activity])
 
-  if (isLoading) return <div className={styles.loading}>Loading watch insights...</div>
-  if (isError) return <div className={styles.error}>Could not load watch insights.</div>
+  if (isLoading) {
+    return (
+      <div className="page-container">
+        <div className={styles.loading}>Loading watch insights...</div>
+      </div>
+    )
+  }
+  if (isError) {
+    return (
+      <div className="page-container">
+        <div className={styles.error}>Could not load watch insights.</div>
+      </div>
+    )
+  }
   if (!data) return null
 
   const maxWatched = data.mostWatched[0]?.watchedSeconds || 1
@@ -111,7 +123,13 @@ const Insights: React.FC = () => {
 
   return (
     <div className={`page-container ${styles.page}`}>
-      <h2 className="section-title">Watch Insights</h2>
+      <header className={styles.pageHeader}>
+        <div>
+          <span className={styles.eyebrow}>Your stats</span>
+          <h1 className={styles.pageTitle}>Watch Insights</h1>
+          <p className={styles.pageSub}>See what you have been watching lately.</p>
+        </div>
+      </header>
 
       <div className={styles.statsGrid}>
         {stats.map((stat) => (

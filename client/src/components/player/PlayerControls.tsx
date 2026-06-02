@@ -222,6 +222,7 @@ const PlayerControls = ({
     >
       <button
         className={styles.centerPlayPause}
+        data-speed-boost-ignore="true"
         onClick={(e) => {
           e.stopPropagation()
           actions.togglePlay()
@@ -231,7 +232,7 @@ const PlayerControls = ({
         {state.isPlaying ? <FaPause /> : <FaPlay className={styles.playIconOffset} />}
       </button>
 
-      <div className={styles.bottomControls}>
+      <div className={styles.bottomControls} data-speed-boost-ignore="true">
         <div
           className={`${styles.progressBarContainer} ${state.isScrubbing ? styles.scrubbing : ''} `}
           ref={refs.progressBarRef}

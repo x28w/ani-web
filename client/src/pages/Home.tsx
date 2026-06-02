@@ -9,6 +9,8 @@ import AnimeCard from '../components/anime/AnimeCard'
 import AnimeHeroCarousel from '../components/anime/AnimeHeroCarousel'
 import SkeletonGrid from '../components/common/SkeletonGrid'
 import RemoveConfirmationModal from '../components/common/RemoveConfirmationModal'
+import { idsMatch, resolveShowId } from '../lib/showId'
+import HomeAiringToday from '../components/home/HomeAiringToday'
 import {
   type Anime,
   useLatestReleases,
@@ -26,11 +28,9 @@ const HERO_SELECTION_KEY = 'ani-web:hero-selection:v1'
 
 const getHeroSeed = () => {
   const date = new Date().toISOString().slice(0, 10)
-
   try {
     const stored = JSON.parse(localStorage.getItem(HERO_SELECTION_KEY) || '{}')
     if (stored.date === date && Number.isFinite(stored.seed)) return Number(stored.seed)
-
     const seed = Math.floor(Math.random() * 2147483647)
     localStorage.setItem(HERO_SELECTION_KEY, JSON.stringify({ date, seed }))
     return seed
@@ -42,13 +42,11 @@ const getHeroSeed = () => {
 const shuffleWithSeed = (items: Anime[], seed: number) => {
   const shuffled = [...items]
   let value = seed || 1
-
   for (let index = shuffled.length - 1; index > 0; index -= 1) {
     value = (value * 16807) % 2147483647
     const target = value % (index + 1)
     ;[shuffled[index], shuffled[target]] = [shuffled[target], shuffled[index]]
   }
-
   return shuffled
 }
 
@@ -62,7 +60,6 @@ const Home: React.FC = () => {
   const seasonalRef = useRef<HTMLDivElement>(null)
 
   const { data: nextPageData } = usePaginatedCurrentSeason(page + 1)
-
   const { titlePreference } = useTitlePreference()
   const [itemToRemove, setItemToRemove] = React.useState<{ id: string; name: string } | null>(null)
   const removeWatchlistMutation = useRemoveFromWatchlist()
@@ -82,14 +79,12 @@ const Home: React.FC = () => {
   const cwList = useMemo(() => {
     const combined: typeof cwFast = []
     const seen = new Set<string>()
-
     if (cwFast) {
       for (const show of cwFast) {
         combined.push(show)
         seen.add(show.id)
       }
     }
-
     if (cwUpNext) {
       for (const show of cwUpNext) {
         if (!seen.has(show.id)) {
@@ -98,7 +93,6 @@ const Home: React.FC = () => {
         }
       }
     }
-
     return combined.length > 0 ? combined : cwFast || []
   }, [cwFast, cwUpNext])
 
@@ -108,6 +102,7 @@ const Home: React.FC = () => {
     () => new Set((cwList || []).map((anime) => String(anime.id || anime._id))),
     [cwList]
   )
+
   const featuredAnime = useMemo(() => {
     const selected: Anime[] = []
     const selectedIds = new Set<string>()
@@ -117,7 +112,6 @@ const Home: React.FC = () => {
       selected.push(anime)
       selectedIds.add(id)
     }
-
     ;(cwList || []).slice(0, 2).forEach(addUnique)
     shuffleWithSeed([...(latest || []), ...(currentSeason || [])], heroSeed).forEach(addUnique)
     return selected.slice(0, 6)
@@ -143,10 +137,11 @@ const Home: React.FC = () => {
 
   const handleRemove = useCallback(
     (id: string) => {
-      const show = cwList?.find((s) => String(s.id) === String(id))
+      const show = cwList?.find((s) => idsMatch(s, id))
       if (show) {
         const displayTitle = (show[titlePreference as keyof typeof show] as string) || show.name
-        setItemToRemove({ id, name: displayTitle })
+        const canonicalId = resolveShowId(show)
+        setItemToRemove({ id: canonicalId, name: displayTitle })
       }
     },
     [cwList, titlePreference]
@@ -163,9 +158,9 @@ const Home: React.FC = () => {
   )
 
   const tabs: { key: ActiveTab; label: string }[] = [
-    { key: 'latest', label: 'Latest Releases' },
-    { key: 'season', label: 'Current Season' },
-    { key: 'popular', label: 'Top 10 Popular' },
+    { key: 'latest', label: 'Latest' },
+    { key: 'season', label: 'Season' },
+    { key: 'popular', label: 'Top 10' },
   ]
 
   const renderTabContent = () => {
@@ -173,10 +168,14 @@ const Home: React.FC = () => {
       case 'latest':
         return (
           <AnimeSection
-            title="Latest Releases"
+            eyebrow="Fresh"
+            title="Latest releases"
+            subtitle="Just dropped — sub and dub when available"
             animeList={latest?.slice(0, 14) || []}
             loading={loadingLatest}
             carousel
+            seeAllHref="/search"
+            seeAllLabel="Browse all"
           />
         )
       case 'season':
@@ -184,8 +183,10 @@ const Home: React.FC = () => {
           <section style={{ marginBottom: '2.5rem' }}>
             <div className={styles['section-header']} ref={seasonalRef}>
               <div className={styles['title-wrapper']}>
-                <div className="section-title" style={{ marginBottom: 0 }}>
-                  Current Season
+                <div>
+                  <span className="section-eyebrow">Simulcast</span>
+                  <div className="section-title">Current season</div>
+                  <p className="section-subtitle">Page {page}</p>
                 </div>
                 <div className={styles['pagination-controls']}>
                   <button
@@ -224,13 +225,9 @@ const Home: React.FC = () => {
                 </div>
               </div>
             </div>
-
             <div
               className={`grid-container ${styles.seasonGrid}`}
-              style={{
-                minHeight: '300px',
-                alignContent: 'start',
-              }}
+              style={{ minHeight: '300px', alignContent: 'start' }}
             >
               {loadingSeason ? (
                 <SkeletonGrid count={seasonLimit} />
@@ -250,96 +247,70 @@ const Home: React.FC = () => {
   }
 
   return (
-    <div style={{ paddingBottom: '2rem' }}>
+    <>
       <AnimeHeroCarousel
         animeList={featuredAnime}
         loading={loadingLatest && loadingSeason}
         continueWatchingIds={continueWatchingIds}
       />
 
-      {/* ── Continue Watching ── */}
-      <AnimeSection
-        title="Continue Watching"
-        animeList={cwList || []}
-        continueWatching
-        carousel
-        onRemove={handleRemove}
-        showSeeMore={cwList !== undefined && cwList.length > 0}
-        loading={loadingFast}
-        emptyState={
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '4rem 2rem',
-              backgroundColor: 'var(--bg-secondary)',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--border-secondary)',
-              textAlign: 'center',
-              gap: '1rem',
-              width: '100%',
-              minHeight: '280px',
-            }}
-          >
-            <FaHistory
-              size={40}
-              style={{ color: 'var(--accent)', opacity: 0.6, marginBottom: '0.5rem' }}
-            />
-            <div>
-              <h3
-                style={{
-                  fontSize: '1.2rem',
-                  fontWeight: 'var(--font-weight-semibold)',
-                  marginBottom: '0.4rem',
-                  color: 'var(--text-primary)',
-                }}
-              >
-                Nothing is here...
-              </h3>
-              <p
-                style={{
-                  fontSize: '0.9rem',
-                  color: 'var(--text-secondary)',
-                  maxWidth: '300px',
-                }}
-              >
-                You haven't watched anything yet. Start exploring and watch something first!
-              </p>
+      <div className={styles.homeBody}>
+        <AnimeSection
+          eyebrow="Your queue"
+          title="Continue watching"
+          subtitle="Pick up where you left off"
+          animeList={cwList || []}
+          continueWatching
+          carousel
+          onRemove={handleRemove}
+          showSeeMore={cwList !== undefined && cwList.length > 0}
+          seeAllHref="/watchlist/Continue Watching"
+          loading={loadingFast}
+          emptyState={
+            <div className={styles.emptyContinue}>
+              <FaHistory size={36} aria-hidden />
+              <div>
+                <h3>Nothing in progress</h3>
+                <p>Start a show from the hero, or browse the catalog to find something new.</p>
+              </div>
             </div>
-          </div>
-        }
-      />
+          }
+        />
 
-      {/* ── Tab Selector ── */}
-      <div className={styles.tabBar}>
-        {tabs.map((tab) => (
-          <Button
-            key={tab.key}
-            variant={activeTab === tab.key ? 'primary' : 'secondary'}
-            size="sm"
-            className={`${styles.tabButton} ${activeTab === tab.key ? styles.tabActive : ''}`}
-            onClick={() => setActiveTab(tab.key)}
-          >
-            {tab.label}
-          </Button>
-        ))}
+        <Top10List title="Hot this week" fixedTimeframe="weekly" eyebrow="Trending" />
+        <HomeAiringToday />
+
+        <div className={styles.tabBar} role="tablist" aria-label="Browse categories">
+          {tabs.map((tab) => (
+            <Button
+              key={tab.key}
+              variant="ghost"
+              size="sm"
+              role="tab"
+              aria-selected={activeTab === tab.key}
+              className={`${styles.tabButton} ${activeTab === tab.key ? styles.tabActive : ''}`}
+              onClick={() => setActiveTab(tab.key)}
+            >
+              {tab.label}
+            </Button>
+          ))}
+        </div>
+
+        <div className={styles.tabContent}>{renderTabContent()}</div>
+
+        <div id="schedule">
+          <Schedule />
+        </div>
+
+        <RemoveConfirmationModal
+          isOpen={!!itemToRemove}
+          onClose={() => setItemToRemove(null)}
+          onConfirm={handleConfirmRemove}
+          animeName={itemToRemove?.name || ''}
+          scenario="continueWatching"
+        />
       </div>
-
-      {/* ── Tab Content ── */}
-      <div className={styles.tabContent}>{renderTabContent()}</div>
-
-      <Schedule />
-
-      <RemoveConfirmationModal
-        isOpen={!!itemToRemove}
-        onClose={() => setItemToRemove(null)}
-        onConfirm={handleConfirmRemove}
-        animeName={itemToRemove?.name || ''}
-        scenario="continueWatching"
-      />
-    </div>
+    </>
   )
 }
 

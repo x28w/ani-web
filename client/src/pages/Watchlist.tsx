@@ -17,6 +17,7 @@ import AnimeCard from '../components/anime/AnimeCard'
 import SkeletonGrid from '../components/common/SkeletonGrid'
 import ErrorMessage from '../components/common/ErrorMessage'
 import RemoveConfirmationModal from '../components/common/RemoveConfirmationModal'
+import { resolveShowId } from '../lib/showId'
 import { Button } from '../components/common/Button'
 import SearchableSelect from '../components/common/SearchableSelect'
 
@@ -616,7 +617,7 @@ const Watchlist: React.FC = () => {
               <AnimeCard
                 anime={item}
                 continueWatching={isCW}
-                onRemove={() => handleRemove(item.id, item.name)}
+                onRemove={() => handleRemove(resolveShowId(item), item.name)}
                 layout="vertical"
               />
               {!isCW && (
@@ -626,7 +627,7 @@ const Watchlist: React.FC = () => {
                     aria-label={`Change status for ${item.name}`}
                     value={item.status}
                     onChange={(e) =>
-                      updateStatus.mutate({ id: item.id, status: e.currentTarget.value })
+                      updateStatus.mutate({ id: resolveShowId(item), status: e.currentTarget.value })
                     }
                   >
                     {STATUS_OPTIONS.map((s) => (
@@ -637,7 +638,7 @@ const Watchlist: React.FC = () => {
                   </select>
                   <button
                     className={styles.removeBtn}
-                    onClick={() => handleRemove(item.id, item.name)}
+                    onClick={() => handleRemove(resolveShowId(item), item.name)}
                     title="Remove from Watchlist"
                   >
                     <FaTrash size={12} />

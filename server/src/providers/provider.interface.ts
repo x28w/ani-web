@@ -8,6 +8,9 @@ export interface Show {
   bannerImage?: string
   description?: string
   type?: string
+  year?: number
+  episodeCount?: number
+  status?: string
   availableEpisodesDetail?: {
     sub?: string[]
     dub?: string[]

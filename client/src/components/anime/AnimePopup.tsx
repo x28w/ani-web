@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { FaStar, FaPlay, FaCalendarAlt, FaTv, FaPlus, FaCheck } from 'react-icons/fa'
+import { FaStar, FaPlay, FaCalendarAlt, FaTv, FaPlus, FaCheck, FaListUl } from 'react-icons/fa'
+import { useWatchQueue } from '../../contexts/WatchQueueContext'
+import { resolveShowId } from '../../lib/showId'
 import { Link } from 'react-router-dom'
 import { useAnimeInfoData } from '../../hooks/useAnimeInfoData'
 import styles from './AnimePopup.module.css'
@@ -19,6 +21,8 @@ const AnimePopup: React.FC<AnimePopupProps> = ({
   onMouseLeave,
 }) => {
   const { showMeta, loadingMeta, inWatchlist, toggleWatchlist } = useAnimeInfoData(showId)
+  const { add, isQueued, remove } = useWatchQueue()
+  const queued = isQueued(showId)
 
   const position = useMemo(() => {
     const popupWidth = 320
@@ -124,7 +128,30 @@ const AnimePopup: React.FC<AnimePopupProps> = ({
                   }}
                 >
                   {inWatchlist ? <FaCheck size={12} /> : <FaPlus size={12} />}
-                  <span>{inWatchlist ? 'Remove' : 'Watchlist'}</span>
+                  <span>{inWatchlist ? 'In list' : 'Watchlist'}</span>
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.watchlistBtn} ${queued ? styles.active : ''}`}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    if (!showMeta) return
+                    const id = resolveShowId({ id: showId, _id: showId })
+                    if (queued) remove(id)
+                    else
+                      add({
+                        id,
+                        name: showMeta.name || '',
+                        thumbnail: showMeta.thumbnail || '',
+                        nativeName: showMeta.names?.native,
+                        englishName: showMeta.names?.english,
+                        type: showMeta.type,
+                      })
+                  }}
+                >
+                  <FaListUl size={12} />
+                  <span>{queued ? 'Queued' : 'Queue'}</span>
                 </button>
                 <Link to={`/anime/${showId}`} className={styles.detailsBtn}>
                   Read more

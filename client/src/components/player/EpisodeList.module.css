@@ -2,14 +2,20 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
   background: transparent;
 }
 
 .episodeListHeader {
   background: transparent;
   padding: 1.5rem;
-  border-bottom: 1px solid var(--glass-border);
+  border-bottom: 1px solid var(--border-primary);
   z-index: 10;
+}
+
+.compactHeader {
+  padding: var(--space-3) var(--space-4) var(--space-2);
+  border-bottom: none;
 }
 
 .episodeListTitle {
@@ -65,6 +71,9 @@
   padding: 1rem;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  min-height: 0;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 
 .episodeList::-webkit-scrollbar {

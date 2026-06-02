@@ -11,8 +11,12 @@
 }
 
 .cardWrapper:hover {
-  transform: translateY(-6px);
+  transform: translateY(-4px);
   z-index: 5;
+}
+
+.cardWrapper:hover .card {
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--border-accent);
 }
 
 .card {
@@ -112,6 +116,51 @@
   left: var(--space-2);
   background-color: var(--accent);
   color: white;
+}
+
+.scoreBadge {
+  composes: badge;
+  top: var(--space-2);
+  right: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+.scoreBadge svg {
+  font-size: 0.65rem;
+}
+
+.newBadge {
+  composes: badge;
+  top: var(--space-2);
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #ef4444, #f97316);
+  color: #fff;
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  padding: 0.2rem 0.5rem;
+}
+
+.playOverlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  color: #fff;
+  font-size: 2rem;
+  z-index: 3;
+}
+
+.cardWrapper:hover .playOverlay {
+  opacity: 1;
 }
 
 .adultBadge {

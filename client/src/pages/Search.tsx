@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import {
   FaSearch,
   FaFilter,
@@ -13,8 +13,13 @@ import SkeletonGrid from '../components/common/SkeletonGrid'
 import { Button } from '../components/common/Button'
 import ErrorMessage from '../components/common/ErrorMessage'
 import SearchableSelect from '../components/common/SearchableSelect'
-import { usePaginatedSearchAnime, useGenresAndStudios } from '../hooks/useAnimeData'
+import {
+  usePaginatedSearchAnime,
+  useGenresAndStudios,
+  useLatestReleases,
+} from '../hooks/useAnimeData'
 import { useLowEndMode } from '../contexts/LowEndModeContext'
+import SearchDiscoverHub from '../components/search/SearchDiscoverHub'
 import styles from './Search.module.css'
 
 interface Option {
@@ -66,6 +71,7 @@ const getGenreStateFromParams = (params: URLSearchParams) => {
 }
 
 export default function Search() {
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [query, setQuery] = useState(searchParams.get('query') || '')
   const [page, setPage] = useState(parseInt(searchParams.get('page') || '1'))
@@ -81,6 +87,7 @@ export default function Search() {
   const { lowEndMode } = useLowEndMode()
   const resultsRef = useRef<HTMLDivElement>(null)
 
+  const { data: latestReleases } = useLatestReleases()
   const { data: metaData } = useGenresAndStudios()
   const availableGenres = metaData?.genres || []
   const availableStudios = metaData?.studios || []
@@ -182,6 +189,7 @@ export default function Search() {
   const activeFilterCount =
     [type, season, year, country, studio].filter((value) => value !== 'ALL').length +
     Object.keys(genreStates).length
+  const showDiscoverHub = !appliedQuery && activeFilterCount === 0 && page === 1
   const canGoNext = results.length >= 14 && nextPageData && nextPageData.length > 0
 
   const resetFilters = () => {
@@ -202,16 +210,17 @@ export default function Search() {
     <div className="page-container">
       <header className={styles.header}>
         <div>
+          <p className={styles.pageEyebrow}>Catalog</p>
           <h1 className={styles.pageTitle}>Search</h1>
-          <p className={styles.pageSubtitle}>Find anime by title, studio, season or genre</p>
+          <p className={styles.pageSubtitle}>Title, studio, season, or genre — stack filters when you need precision.</p>
         </div>
-        {!isLoading && !isError && results.length > 0 && (
-          <div className={styles.resultsSummary}>
-            <strong>{results.length}</strong>
-            <span>shown on this page</span>
-          </div>
-        )}
       </header>
+
+      {showDiscoverHub && (
+        <SearchDiscoverHub
+          latest={latestReleases}
+        />
+      )}
 
       <form
         className={styles.searchToolbar}
@@ -341,85 +350,89 @@ export default function Search() {
 
       {isError && <ErrorMessage message={error?.message || 'Error'} />}
 
-      <div className={styles.resultsHeader} ref={resultsRef}>
-        <div>
-          <h2 className={styles.resultsTitle}>
-            {appliedQuery ? `Results for "${appliedQuery}"` : 'Browse Anime'}
-          </h2>
-          {!isLoading && !isError && (
-            <span className={styles.itemCount}>
-              {results.length === 0
-                ? 'No matching titles'
-                : `${results.length} titles on page ${page}`}
-            </span>
+      {!showDiscoverHub && (
+        <>
+          <div className={styles.resultsHeader} ref={resultsRef}>
+            <div>
+              <h2 className={styles.resultsTitle}>
+                {appliedQuery ? `Results for "${appliedQuery}"` : 'Browse Anime'}
+              </h2>
+              {!isLoading && !isError && (
+                <span className={styles.itemCount}>
+                  {results.length === 0
+                    ? 'No matching titles'
+                    : `${results.length} titles on page ${page}`}
+                </span>
+              )}
+            </div>
+
+            {results.length > 0 && (
+              <div className={styles.pagination}>
+                <button
+                  className={styles.pageBtn}
+                  onClick={() => handlePageChange(page - 1)}
+                  disabled={page === 1 || isLoading}
+                >
+                  <FaChevronLeft size={14} />
+                </button>
+                <span className={styles.pageInfo}>
+                  Page <strong>{page}</strong>
+                </span>
+                <button
+                  className={styles.pageBtn}
+                  onClick={() => handlePageChange(page + 1)}
+                  disabled={!canGoNext || isLoading}
+                >
+                  <FaChevronRight size={14} />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {isLoading ? (
+            <SkeletonGrid />
+          ) : results.length > 0 ? (
+            <div className={`${styles.resultsGrid} ${lowEndMode ? styles.lowEnd : ''}`}>
+              {results.map((anime) => (
+                <AnimeCard key={anime._id} anime={anime} />
+              ))}
+            </div>
+          ) : null}
+
+          {!isLoading && !isError && results.length === 0 && (
+            <div className={styles.noResults}>
+              <FaSearch size={30} className={styles.noResultsIcon} />
+              <h3>No results found</h3>
+              <p>Try another title or loosen one of your filters.</p>
+            </div>
           )}
-        </div>
 
-        {results.length > 0 && (
-          <div className={styles.pagination}>
-            <button
-              className={styles.pageBtn}
-              onClick={() => handlePageChange(page - 1)}
-              disabled={page === 1 || isLoading}
-            >
-              <FaChevronLeft size={14} />
-            </button>
-            <span className={styles.pageInfo}>
-              Page <strong>{page}</strong>
-            </span>
-            <button
-              className={styles.pageBtn}
-              onClick={() => handlePageChange(page + 1)}
-              disabled={!canGoNext || isLoading}
-            >
-              <FaChevronRight size={14} />
-            </button>
-          </div>
-        )}
-      </div>
-
-      {isLoading ? (
-        <SkeletonGrid />
-      ) : results.length > 0 ? (
-        <div className={`${styles.resultsGrid} ${lowEndMode ? styles.lowEnd : ''}`}>
-          {results.map((anime) => (
-            <AnimeCard key={anime._id} anime={anime} />
-          ))}
-        </div>
-      ) : null}
-
-      {!isLoading && !isError && results.length === 0 && (
-        <div className={styles.noResults}>
-          <FaSearch size={30} className={styles.noResultsIcon} />
-          <h3>No results found</h3>
-          <p>Try another title or loosen one of your filters.</p>
-        </div>
-      )}
-
-      {results.length > 0 && (
-        <div className={styles.bottomPagination}>
-          <div className={styles.pagination}>
-            <button
-              className={styles.pageBtn}
-              onClick={() => handlePageChange(page - 1)}
-              disabled={page === 1 || isLoading}
-            >
-              <FaChevronLeft size={14} />
-              <span>Previous</span>
-            </button>
-            <span className={styles.pageInfo}>
-              Page <strong>{page}</strong>
-            </span>
-            <button
-              className={styles.pageBtn}
-              onClick={() => handlePageChange(page + 1)}
-              disabled={!canGoNext || isLoading}
-            >
-              <span>Next</span>
-              <FaChevronRight size={14} />
-            </button>
-          </div>
-        </div>
+          {results.length > 0 && (
+            <div className={styles.bottomPagination}>
+              <div className={styles.pagination}>
+                <button
+                  className={styles.pageBtn}
+                  onClick={() => handlePageChange(page - 1)}
+                  disabled={page === 1 || isLoading}
+                >
+                  <FaChevronLeft size={14} />
+                  <span>Previous</span>
+                </button>
+                <span className={styles.pageInfo}>
+                  Page <strong>{page}</strong>
+                </span>
+                <button
+                  className={styles.pageBtn}
+                  onClick={() => handlePageChange(page + 1)}
+                  disabled={!canGoNext || isLoading}
+                >
+                  <span>Next</span>
+                  <FaChevronRight size={14} />
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

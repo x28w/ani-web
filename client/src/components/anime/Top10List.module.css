@@ -93,15 +93,19 @@
 .carouselContainer {
   position: relative;
   width: 100%;
+  overflow: visible;
+  padding-top: 8px;
+  margin-top: -4px;
 }
 
 .carousel {
   display: flex;
   gap: 15px;
   overflow-x: auto;
+  overflow-y: visible;
   scroll-behavior: smooth;
   scrollbar-width: none;
-  padding-bottom: 10px;
+  padding: 4px 2px 14px;
 }
 
 .carousel::-webkit-scrollbar {

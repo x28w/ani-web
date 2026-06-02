@@ -1,3 +1,9 @@
+.homeBody {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 var(--space-6) 2rem;
+}
+
 .section-header {
   display: flex;
   align-items: center;
@@ -88,30 +94,81 @@
   }
 }
 
-/* ===== TAB BAR ===== */
+/* ===== SEGMENTED TAB BAR ===== */
 .tabBar {
+  display: inline-flex;
+  gap: 2px;
+  margin-bottom: var(--space-6);
+  padding: 4px;
+  border-radius: var(--radius-full);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+}
+
+.tabButton {
+  border-radius: var(--radius-full) !important;
+  border: none !important;
+  background: transparent !important;
+  color: var(--text-secondary) !important;
+  font-weight: var(--font-weight-semibold) !important;
+  box-shadow: none !important;
+}
+
+.tabActive {
+  background: var(--accent) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 14px var(--accent-glow) !important;
+}
+
+.emptyContinue {
   display: flex;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-12) var(--space-6);
+  background: linear-gradient(160deg, var(--surface-muted), transparent),
+    var(--bg-secondary);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-primary);
+  text-align: center;
+  gap: var(--space-4);
+  width: 100%;
+  min-height: 260px;
+}
+
+.emptyContinue svg {
+  color: var(--accent);
+  opacity: 0.75;
+}
+
+.emptyContinue h3 {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.emptyContinue p {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  max-width: 320px;
+  margin: 0;
 }
 
 @media (max-width: 600px) {
+  .homeBody {
+    padding: 0 var(--space-3) 2rem;
+  }
+
   .tabBar {
+    display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    width: 100%;
+    border-radius: var(--radius-lg);
   }
 
   .tabButton {
     width: 100%;
-    justify-content: flex-start !important;
-    padding-left: var(--space-4) !important;
+    justify-content: center !important;
   }
-}
-
-.tabButton {
-  border-radius: 20px !important;
-}
-
-.tabActive {
-  box-shadow: var(--shadow-md);
 }

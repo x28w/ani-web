@@ -21,6 +21,7 @@ export const ProviderSelector: React.FC<ProviderSelectorProps> = ({
         onChange={(e) => onProviderChange(e.target.value as PlayerState['selectedProvider'])}
       >
         <option value="allanime">AllAnime</option>
+        <option value="megaplay">MegaPlay</option>
         <option value="animeya">Animeya</option>
         <option value="animepahe">AnimePahe</option>
         <option value="123anime">123Anime</option>

@@ -47,6 +47,10 @@ interface AnimeSectionConfig {
 
 interface AnimeSectionProps {
   title: string
+  eyebrow?: string
+  subtitle?: string
+  seeAllHref?: string
+  seeAllLabel?: string
   animeList: Anime[]
   continueWatching?: boolean
   onRemove?: (id: string) => void
@@ -60,6 +64,10 @@ interface AnimeSectionProps {
 
 const AnimeSection: React.FC<AnimeSectionProps> = ({
   title,
+  eyebrow,
+  subtitle,
+  seeAllHref,
+  seeAllLabel = 'View all',
   animeList,
   continueWatching,
   onRemove,
@@ -93,8 +101,10 @@ const AnimeSection: React.FC<AnimeSectionProps> = ({
     <section style={{ marginBottom: '2.5rem' }}>
       <div className={styles['section-header']}>
         <div className={styles['title-wrapper']}>
-          <div className="section-title" style={{ marginBottom: 0 }}>
-            {title}
+          <div className={styles['title-block']}>
+            {eyebrow && <span className="section-eyebrow">{eyebrow}</span>}
+            <div className="section-title">{title}</div>
+            {subtitle && <p className="section-subtitle">{subtitle}</p>}
           </div>
           {carousel && animeList.length > 0 && (
             <div className={styles['nav-arrows']}>
@@ -107,14 +117,13 @@ const AnimeSection: React.FC<AnimeSectionProps> = ({
             </div>
           )}
         </div>
-        {showSeeMore && (
+        {(showSeeMore || seeAllHref) && (
           <div className={styles['header-actions']}>
             <Link
-              to="/watchlist/Continue Watching"
-              className="btn-secondary"
-              style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}
+              to={seeAllHref || '/watchlist/Continue Watching'}
+              className={styles.seeAllLink}
             >
-              View All
+              {seeAllLabel} →
             </Link>
           </div>
         )}

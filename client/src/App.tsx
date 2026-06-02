@@ -16,6 +16,7 @@ const Insights = lazy(() => import('./pages/Insights'))
 const AnimeInfoPage = lazy(() => import('./pages/AnimeInfoPage'))
 const Login = lazy(() => import('./pages/Login'))
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
+const Queue = lazy(() => import('./pages/Queue'))
 
 import { useSidebar } from './hooks/useSidebar'
 import { Toaster } from 'react-hot-toast'
@@ -33,6 +34,17 @@ function App() {
   const { authenticated, loading, user } = useAuth()
   const location = useLocation()
   useTelemetry()
+
+  const mainClass =
+    location.pathname === '/'
+      ? 'main--home'
+      : location.pathname.startsWith('/watch')
+        ? 'main--watch'
+        : location.pathname === '/search'
+          ? 'main--search'
+          : location.pathname === '/settings'
+            ? 'main--settings'
+            : ''
 
   useEffect(() => {
     const handleKeydown = (event: KeyboardEvent) => {
@@ -121,7 +133,7 @@ function App() {
       {toaster}
       <Header />
       <Sidebar />
-      <main>
+      <main className={`${mainClass} page-enter`}>
         <ErrorBoundary>
           <Suspense fallback={<TopProgressBar />}>
             <Routes>
@@ -129,6 +141,7 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/watchlist/:filter?" element={<Watchlist />} />
               <Route path="/search" element={<Search />} />
+              <Route path="/queue" element={<Queue />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/mal" element={<MAL />} />

@@ -238,7 +238,8 @@ export const useRemoveFromWatchlist = () => {
     },
     onSuccess: () => {
       toast.success('Removed from watchlist')
-      queryClient.invalidateQueries({ queryKey: ['watchlist'] })
+      // Invalidate all paginated watchlist queries (they include additional key parts).
+      queryClient.invalidateQueries({ queryKey: ['watchlist'], exact: false })
     },
     onError: (error) => {
       toast.error(`Failed to remove: ${error.message}`)
@@ -307,5 +308,55 @@ export const useGenresAndStudios = () => {
     queryKey: ['genresAndStudios'],
     queryFn: () => fetchApi('/api/genres-and-tags'),
     staleTime: 1000 * 60 * 60, // 1 hour
+  })
+}
+
+export const usePopularAnime = (timeframe: string = 'weekly') => {
+  return useQuery<Anime[]>({
+    queryKey: ['popular', timeframe],
+    queryFn: () => fetchApi(`/api/popular/${timeframe}`),
+    staleTime: 1000 * 60 * 15,
+  })
+}
+
+export const useGenreShelf = (genre: string, limit = 12) => {
+  return useQuery<Anime[]>({
+    queryKey: ['genreShelf', genre, limit],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      params.set('genres', genre)
+      params.set('limit', String(limit))
+      params.set('page', '1')
+      return fetchApi(`/api/search?${params.toString()}`)
+    },
+    enabled: Boolean(genre),
+    staleTime: 1000 * 60 * 30,
+  })
+}
+
+export const useTodaySchedule = () => {
+  const today = new Date().toISOString().split('T')[0]
+  return useQuery<Anime[]>({
+    queryKey: ['schedule', today],
+    queryFn: () => fetchApi(`/api/schedule/${today}`),
+    staleTime: 1000 * 60 * 10,
+  })
+}
+
+export const useSimilarAnime = (genres: string[] | undefined, excludeId?: string, limit = 10) => {
+  const genreKey = genres?.slice(0, 2).join(',') || ''
+  return useQuery<Anime[]>({
+    queryKey: ['similar', genreKey, excludeId, limit],
+    queryFn: async () => {
+      if (!genreKey) return []
+      const params = new URLSearchParams()
+      params.set('genres', genreKey)
+      params.set('limit', String(limit + 3))
+      params.set('page', '1')
+      const results = (await fetchApi(`/api/search?${params.toString()}`)) as Anime[]
+      return results.filter((a) => String(a._id || a.id) !== String(excludeId)).slice(0, limit)
+    },
+    enabled: Boolean(genreKey),
+    staleTime: 1000 * 60 * 20,
   })
 }

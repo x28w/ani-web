@@ -4,7 +4,20 @@ import toast from 'react-hot-toast'
 import styles from './Player.module.css'
 import layoutStyles from './PlayerPageLayout.module.css'
 import ToggleSwitch from '../components/common/ToggleSwitch'
-import { FaCheck, FaPlus, FaChevronDown, FaChevronUp, FaBackward, FaForward } from 'react-icons/fa'
+import {
+  FaCheck,
+  FaPlus,
+  FaChevronDown,
+  FaChevronUp,
+  FaBackward,
+  FaForward,
+  FaExpand,
+  FaCompress,
+  FaListUl,
+} from 'react-icons/fa'
+import PlayerRelatedShows from '../components/player/PlayerRelatedShows'
+import { useWatchQueue } from '../contexts/WatchQueueContext'
+import { resolveShowId } from '../lib/showId'
 import { fixThumbnailUrl } from '../lib/utils'
 import ResumeModal from '../components/common/ResumeModal'
 import useIsMobile from '../hooks/useIsMobile'
@@ -117,6 +130,20 @@ const Player: React.FC = () => {
 
   const hlsInstance = useRef<Hls | null>(null)
   const isMobile = useIsMobile()
+  const { add: addToQueue, isQueued, remove: removeFromQueue } = useWatchQueue()
+  const showIdResolved = resolveShowId({ id: showId, _id: showId })
+  const inQueue = showIdResolved ? isQueued(showIdResolved) : false
+  const [theaterMode, setTheaterMode] = useState(() => {
+    try {
+      return localStorage.getItem('ani-web:theater-mode') === 'true'
+    } catch {
+      return false
+    }
+  })
+
+  useEffect(() => {
+    localStorage.setItem('ani-web:theater-mode', String(theaterMode))
+  }, [theaterMode])
   const rafIdRef = useRef<number | null>(null)
   const seekToTimeRef = useRef<number>(0)
   const resumeTimeRef = useRef(state.resumeTime)
@@ -768,9 +795,24 @@ const Player: React.FC = () => {
 
   const isVideoLoading = state.loadingShowData || state.loadingVideo
   const showNativePlayer = state.forceNativePlayer || isMobile
+  const totalEpisodes = state.episodes.length
+  const watchedCount = state.watchedEpisodes.length
+  const watchPercent =
+    totalEpisodes > 0 ? Math.min(100, Math.round((watchedCount / totalEpisodes) * 100)) : 0
+
+  const ambientBackdrop = state.showMeta.thumbnail
+    ? fixThumbnailUrl(state.showMeta.thumbnail, 400, 600)
+    : undefined
 
   return (
-    <div className={layoutStyles.playerPageLayout}>
+    <div
+      className={`${layoutStyles.playerPageLayout} ${theaterMode ? layoutStyles.theaterMode : ''}`}
+      style={
+        ambientBackdrop
+          ? ({ '--player-ambient': `url(${ambientBackdrop})` } as React.CSSProperties)
+          : undefined
+      }
+    >
       <ResumeModal
         show={state.showResumeModal}
         resumeTime={player.actions.formatTime(state.resumeTime)}
@@ -782,12 +824,30 @@ const Player: React.FC = () => {
       />
 
       <aside className={layoutStyles.episodeSidebar}>
+        {!state.loadingShowData && totalEpisodes > 0 && (
+          <div className={layoutStyles.episodeSidebarHead}>
+            <h2>Episodes</h2>
+            <div className={layoutStyles.watchProgressLabel}>
+              <span>Series progress</span>
+              <strong>
+                {watchedCount}/{totalEpisodes}
+              </strong>
+            </div>
+            <div className={layoutStyles.progressTrack} aria-hidden>
+              <div
+                className={layoutStyles.progressFill}
+                style={{ width: `${watchPercent}%` }}
+              />
+            </div>
+          </div>
+        )}
         {state.loadingShowData ? (
           <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
             Loading Episodes...
           </div>
         ) : (
           <EpisodeList
+            compact
             episodes={state.episodes}
             currentEpisode={state.currentEpisode}
             watchedEpisodes={state.watchedEpisodes}
@@ -797,6 +857,17 @@ const Player: React.FC = () => {
       </aside>
 
       <div className={layoutStyles.playerMain}>
+        <div className={layoutStyles.playerTopBar}>
+          <button
+            type="button"
+            className={layoutStyles.theaterToggle}
+            onClick={() => setTheaterMode((v) => !v)}
+            aria-pressed={theaterMode}
+          >
+            {theaterMode ? <FaCompress aria-hidden /> : <FaExpand aria-hidden />}
+            {theaterMode ? 'Exit theater' : 'Theater mode'}
+          </button>
+        </div>
         <div
           ref={refs.playerContainerRef}
           className={`${styles.videoContainer} ${!player.state.isFullscreen ? layoutStyles.videoPlayerWrapper : ''} ${player.state.isFullscreen ? styles.fullscreenActive : ''}`}
@@ -815,6 +886,13 @@ const Player: React.FC = () => {
                 </div>
                 <div className={styles.skipText}>15s</div>
               </div>
+            </div>
+          )}
+
+          {player.state.isSpeedBoostActive && (
+            <div className={styles.speedBoostBadge} aria-hidden="true">
+              <span>2x</span>
+              <FaForward size={12} />
             </div>
           )}
 
@@ -856,7 +934,11 @@ const Player: React.FC = () => {
                   <p className={styles.errorSubtext}>
                     Please try selecting a different provider below.
                   </p>
-                  <button className={styles.retryButton} onClick={() => window.location.reload()}>
+                  <button
+                    className={styles.retryButton}
+                    onClick={() => window.location.reload()}
+                    data-speed-boost-ignore="true"
+                  >
                     Retry
                   </button>
                 </div>
@@ -907,6 +989,26 @@ const Player: React.FC = () => {
             </>
           )}
         </div>
+
+        {!isMobile && state.selectedSource?.type !== 'iframe' && (
+          <div className={layoutStyles.playerShortcuts}>
+            <span>
+              <kbd>Space</kbd> play/pause
+            </span>
+            <span>
+              <kbd>←</kbd>
+              <kbd>→</kbd> ±15s
+            </span>
+            <span>
+              <kbd>F</kbd> fullscreen
+            </span>
+            {hasNextEpisode && (
+              <span>
+                <kbd>N</kbd> next ep
+              </span>
+            )}
+          </div>
+        )}
 
         <ProviderSelector
           selectedProvider={state.selectedProvider}
@@ -1038,6 +1140,27 @@ const Player: React.FC = () => {
                   {state.inWatchlist ? <FaCheck size={14} /> : <FaPlus size={14} />}
                   {state.inWatchlist ? 'In Watchlist' : 'Add to Watchlist'}
                 </button>
+                {showIdResolved && state.showMeta.name && (
+                  <button
+                    type="button"
+                    className={`${styles.watchlistBtn} ${inQueue ? styles.inList : ''}`}
+                    onClick={() => {
+                      if (inQueue) removeFromQueue(showIdResolved)
+                      else
+                        addToQueue({
+                          id: showIdResolved,
+                          name: state.showMeta.name,
+                          thumbnail: state.showMeta.thumbnail || '',
+                          nativeName: state.showMeta.names?.native,
+                          englishName: state.showMeta.names?.english,
+                          type: state.showMeta.type,
+                        })
+                    }}
+                  >
+                    <FaListUl size={14} />
+                    {inQueue ? 'In queue' : 'Add to queue'}
+                  </button>
+                )}
                 {showManualWatchedButton && (
                   <button
                     className={`${styles.watchlistBtn} ${styles.markWatchedBtn} ${isCurrentEpisodeWatched ? styles.markWatchedDone : ''}`}
@@ -1280,6 +1403,8 @@ const Player: React.FC = () => {
               )}
             </>
           )}
+
+          <PlayerRelatedShows showId={showId} genres={state.showMeta.genres} />
         </div>
       </div>
     </div>
