@@ -11,7 +11,7 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.6) 100%);
+  background: linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.5) 100%);
 }
 
 .controlsOverlay > * {
@@ -34,13 +34,13 @@
   justify-content: center;
   background: rgba(0,0,0,0.5);
   border: none;
-  border-radius: 50%;
+  border-radius: 2px;
   color: white;
   width: 56px;
   height: 56px;
   font-size: 1.4rem;
   cursor: pointer;
-  transition: background 0.2s, transform 0.2s;
+  transition: background 0.15s, transform 0.15s;
 }
 
 .centerPlayPause:hover {
@@ -53,16 +53,16 @@
 }
 
 .bottomControls {
-  padding: 8px 16px 12px;
+  padding: 6px 20px 10px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  background: rgba(0,0,0,0.7);
+  gap: 2px;
+  background: rgba(0,0,0,0.75);
 }
 
 .progressBarContainer {
   width: 100%;
-  height: 16px;
+  height: 14px;
   cursor: pointer;
   position: relative;
   touch-action: none;
@@ -74,9 +74,9 @@
   width: 100%;
   height: 3px;
   background: rgba(255,255,255,0.2);
-  border-radius: 2px;
+  border-radius: 1.5px;
   position: relative;
-  transition: height 0.15s;
+  transition: height 0.1s;
 }
 
 .progressBarContainer:hover .progressBar,
@@ -90,7 +90,7 @@
   top: 0;
   left: 0;
   height: 100%;
-  border-radius: 2px;
+  border-radius: 1.5px;
 }
 
 .watchedBar {
@@ -107,13 +107,13 @@
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%) scale(0);
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
   background: white;
   border-radius: 50%;
   z-index: 3;
-  transition: transform 0.15s;
-  box-shadow: 0 0 4px rgba(0,0,0,0.5);
+  transition: transform 0.1s;
+  box-shadow: 0 0 3px rgba(0,0,0,0.5);
 }
 
 .progressBarContainer:hover .thumb,
@@ -123,16 +123,16 @@
 
 .timeBubble {
   position: absolute;
-  bottom: 28px;
+  bottom: 26px;
   transform: translateX(-50%);
   background: rgba(0,0,0,0.85);
   color: white;
   padding: 3px 7px;
-  border-radius: 3px;
+  border-radius: 2px;
   font-size: 0.75rem;
   font-weight: 600;
   opacity: 0;
-  transition: opacity 0.15s;
+  transition: opacity 0.1s;
   pointer-events: none;
   white-space: nowrap;
 }
@@ -146,8 +146,7 @@
   top: 0;
   height: 100%;
   z-index: 10;
-  opacity: 0.35;
-  border-radius: 2px;
+  opacity: 0.3;
 }
 
 .skipSegment.op { background: var(--color-success); }
@@ -166,7 +165,7 @@
 .rightControls {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .controlBtn {
@@ -175,12 +174,11 @@
   color: rgba(255,255,255,0.85);
   font-size: 1rem;
   cursor: pointer;
-  padding: 4px 6px;
-  border-radius: 2px;
+  padding: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.15s;
+  transition: color 0.1s;
 }
 
 .controlBtn:hover {
@@ -203,7 +201,7 @@
 .skipControls {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .skipBtn {
@@ -211,12 +209,12 @@
   border: none;
   color: rgba(255,255,255,0.6);
   cursor: pointer;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 4px;
-  transition: color 0.15s;
+  transition: color 0.1s;
 }
 
 .skipBtn:hover {
@@ -226,8 +224,8 @@
 .episodeNavBtn {
   background: transparent;
   border: 1px solid rgba(255,255,255,0.2);
-  border-radius: 3px;
-  padding: 3px 8px;
+  border-radius: 2px;
+  padding: 3px 10px;
   color: rgba(255,255,255,0.8);
   font-weight: 600;
   font-size: 0.75rem;
@@ -235,7 +233,7 @@
   align-items: center;
   gap: 4px;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.1s, border-color 0.1s;
   white-space: nowrap;
 }
 
@@ -253,7 +251,7 @@
 .volumeSlider {
   width: 0;
   opacity: 0;
-  transition: all 0.2s;
+  transition: all 0.15s;
   cursor: pointer;
   margin-left: 4px;
   -webkit-appearance: none;
@@ -272,7 +270,7 @@
   width: 100%;
   height: 3px;
   background: rgba(255,255,255,0.2);
-  border-radius: 2px;
+  border-radius: 1.5px;
 }
 
 .volumeSlider::-webkit-slider-thumb {
@@ -288,13 +286,13 @@
   width: 100%;
   height: 3px;
   background: rgba(255,255,255,0.2);
-  border-radius: 2px;
+  border-radius: 1.5px;
 }
 
 .volumeSlider::-moz-range-progress {
   height: 3px;
   background: var(--accent);
-  border-radius: 2px;
+  border-radius: 1.5px;
 }
 
 .volumeSlider::-moz-range-thumb {
@@ -322,13 +320,13 @@
 .skipCurrentBtn {
   background: rgba(255,255,255,0.1);
   border: none;
-  border-radius: 3px;
-  padding: 4px 10px;
+  border-radius: 2px;
+  padding: 4px 12px;
   color: white;
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.1s;
   white-space: nowrap;
 }
 
@@ -338,12 +336,12 @@
 
 @media (max-width: 768px) {
   .bottomControls {
-    padding: 4px 8px 8px;
+    padding: 4px 10px 8px;
   }
 
   .leftControls,
   .rightControls {
-    gap: 6px;
+    gap: 8px;
   }
 
   .volumeContainer,
@@ -362,12 +360,12 @@
   }
 
   .skipBtn {
-    font-size: 0.95rem;
+    font-size: 1rem;
   }
 
   .episodeNavBtn {
     font-size: 0.65rem;
-    padding: 2px 6px;
+    padding: 2px 8px;
   }
 }
 

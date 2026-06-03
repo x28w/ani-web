@@ -266,21 +266,6 @@ const PlayerControls = ({
               {state.isPlaying ? <FaPause /> : <FaPlay />}
             </button>
 
-            <div className={styles.volumeContainer}>
-              <button className={styles.controlBtn} onClick={actions.toggleMute} aria-label={state.isMuted ? 'Unmute' : 'Mute'}>
-                {renderVolumeIcon()}
-              </button>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={state.isMuted ? 0 : state.volume}
-                onChange={handleVolumeChange}
-                className={styles.volumeSlider}
-              />
-            </div>
-
             <span className={styles.timeDisplay} ref={timeDisplayRef}>
               {actions.formatTime(currentTimeRef.current)} / {actions.formatTime(state.duration)}
             </span>
@@ -318,6 +303,21 @@ const PlayerControls = ({
               >
                 <MdForward10 />
               </button>
+            </div>
+
+            <div className={styles.volumeContainer}>
+              <button className={styles.controlBtn} onClick={actions.toggleMute} aria-label={state.isMuted ? 'Unmute' : 'Mute'}>
+                {renderVolumeIcon()}
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={state.isMuted ? 0 : state.volume}
+                onChange={handleVolumeChange}
+                className={styles.volumeSlider}
+              />
             </div>
 
             {hasPrevEpisode && (
