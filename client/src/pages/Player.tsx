@@ -704,6 +704,10 @@ const Player: React.FC = () => {
     const currentIndex = state.episodes.findIndex((ep) => ep === state.currentEpisode)
     return currentIndex > -1 && currentIndex < state.episodes.length - 1
   })()
+  const hasPrevEpisode = (() => {
+    const currentIndex = state.episodes.findIndex((ep) => ep === state.currentEpisode)
+    return currentIndex > 0
+  })()
 
   const isLastEpisode =
     state.episodes.length > 0 &&
