@@ -24,6 +24,9 @@ interface PlayerControlsProps {
   onAutoplayChange: (checked: boolean) => void
   showNextEpisodeButton: boolean
   onNextEpisode: () => void
+  onPrevEpisode: () => void
+  hasPrevEpisode: boolean
+  hasNextEpisode: boolean
   videoSources: VideoSource[]
   selectedSource: VideoSource | null
   selectedLink: VideoLink | null
@@ -38,6 +41,9 @@ const PlayerControls = ({
   onAutoplayChange,
   showNextEpisodeButton,
   onNextEpisode,
+  onPrevEpisode,
+  hasPrevEpisode,
+  hasNextEpisode,
   videoSources,
   selectedSource,
   selectedLink,
@@ -322,13 +328,24 @@ const PlayerControls = ({
 
           <div className={styles.rightControls}>
             <div className={styles.skipControls}>
-              {showNextEpisodeButton && (
+              {hasPrevEpisode && (
+                <button
+                  className={styles.episodeNavBtn}
+                  onClick={onPrevEpisode}
+                  title="Play previous episode"
+                >
+                  <MdReplay10 style={{ transform: 'scaleX(-1)', marginRight: 4 }} />
+                  Prev
+                </button>
+              )}
+              {(hasNextEpisode || showNextEpisodeButton) && (
                 <button
                   className={styles.nextEpisodeBtn}
                   onClick={onNextEpisode}
                   title="Play next episode"
                 >
-                  Next EP
+                  Next
+                  <MdForward10 style={{ marginLeft: 4 }} />
                 </button>
               )}
               <button

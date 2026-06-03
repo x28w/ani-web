@@ -938,6 +938,17 @@ const Player: React.FC = () => {
                   onAutoplayChange={handleAutoplayChange}
                   showNextEpisodeButton={!state.showResumeModal && showNextEpisodePrompt}
                   onNextEpisode={handleNextEpisode}
+                  onPrevEpisode={() => {
+                    const currentIndex = state.episodes.findIndex((ep) => ep === state.currentEpisode)
+                    if (currentIndex > 0) {
+                      navigate(`/watch/${showId}/${state.episodes[currentIndex - 1]}`)
+                    }
+                  }}
+                  hasPrevEpisode={(() => {
+                    const currentIndex = state.episodes.findIndex((ep) => ep === state.currentEpisode)
+                    return currentIndex > 0
+                  })()}
+                  hasNextEpisode={hasNextEpisode}
                   videoSources={state.videoSources}
                   selectedSource={state.selectedSource}
                   selectedLink={state.selectedLink}

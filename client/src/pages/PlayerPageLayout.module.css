@@ -33,21 +33,29 @@
   padding: 0.45rem 0.9rem;
   border-radius: var(--radius-full);
   border: 1px solid var(--border-secondary);
-  background: var(--bg-secondary);
+  background: linear-gradient(135deg, rgba(139,92,246,0.08), rgba(99,102,241,0.04));
   color: var(--text-secondary);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
   transition:
-    color var(--transition-fast),
-    border-color var(--transition-fast),
-    background var(--transition-fast);
+    all var(--transition-fast);
   white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .theaterToggle:hover {
   color: var(--accent-light);
-  border-color: var(--border-accent);
+  border-color: var(--accent);
+  background: linear-gradient(135deg, rgba(139,92,246,0.15), rgba(99,102,241,0.08));
+  box-shadow: 0 0 20px rgba(139,92,246,0.15);
+  transform: translateY(-1px);
+}
+
+.theaterToggle[aria-pressed="true"] {
+  color: var(--accent-light);
+  border-color: var(--accent);
+  background: linear-gradient(135deg, rgba(139,92,246,0.15), rgba(99,102,241,0.08));
 }
 
 .theaterMode {

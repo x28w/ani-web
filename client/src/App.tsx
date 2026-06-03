@@ -15,8 +15,8 @@ const MAL = lazy(() => import('./pages/MAL'))
 const Insights = lazy(() => import('./pages/Insights'))
 const AnimeInfoPage = lazy(() => import('./pages/AnimeInfoPage'))
 const Login = lazy(() => import('./pages/Login'))
-const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
 const Queue = lazy(() => import('./pages/Queue'))
+const NotFound = lazy(() => import('./pages/NotFound'))
 
 import { useSidebar } from './hooks/useSidebar'
 import { Toaster } from 'react-hot-toast'
@@ -143,7 +143,6 @@ function App() {
               <Route path="/search" element={<Search />} />
               <Route path="/queue" element={<Queue />} />
               <Route path="/settings" element={<Settings />} />
-              <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/mal" element={<MAL />} />
               <Route path="/insights" element={<Insights />} />
               <Route path="/anime/:id" element={<AnimeInfoPage />} />
@@ -151,6 +150,7 @@ function App() {
               <Route path="/watch/:id/:episodeNumber" element={<Player />} />
               <Route path="/player/:id" element={<PlayerRedirect />} />
               <Route path="/player/:id/:episodeNumber" element={<PlayerRedirect />} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
         </ErrorBoundary>
