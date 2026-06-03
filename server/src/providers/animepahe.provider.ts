@@ -43,13 +43,15 @@ export class AnimePaheProvider implements Provider {
   private apiBase = 'https://animepahe.pw/api'
 
   private cache: NodeCache
+  private cachedCookies: Record<string, string> | null = null
+  private cookieFetchInProgress: Promise<void> | null = null
 
   constructor(cache: NodeCache) {
     this.cache = cache
   }
 
-  private getHeaders(isApi: boolean = false): Record<string, string> {
-    const cookies = {
+  private getDefaultCookies(): Record<string, string> {
+    return {
       __ddg1_: '5H0114JE1p0wQHdJiV2O',
       __ddg2_: 'FxnuwLkvPnXSQtPE',
       __ddg8_: 'j55RhixQcxVPfvqt',
@@ -58,8 +60,77 @@ export class AnimePaheProvider implements Provider {
       __ddgid_: 'ExAWs3AJTzpAKb8m',
       __ddgmark_: 'slbgrX6Jj2jTxuo2',
     }
+  }
 
-    const cookieString = Object.entries(cookies)
+  private async fetchFreshCookies(): Promise<void> {
+    const ua =
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36'
+    try {
+      const resp = await fetch(this.base, {
+        method: 'GET',
+        headers: {
+          'User-Agent': ua,
+          Accept:
+            'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+        redirect: 'follow',
+      })
+
+      const setCookie = resp.headers.get('set-cookie')
+      if (setCookie) {
+        const parsed: Record<string, string> = {}
+        setCookie.split(/\n|,/).forEach((part) => {
+          const match = part.trim().match(/^([^=]+)=([^;]+)/)
+          if (match && match[1].startsWith('__ddg')) {
+            parsed[match[1]] = match[2]
+          }
+        })
+        if (Object.keys(parsed).length > 0) {
+          this.cachedCookies = parsed
+          return
+        }
+      }
+
+      const body = await resp.text()
+      const cookieMatch = body.match(/document\.cookie\s*=\s*"([^"]+)"/)
+      if (cookieMatch) {
+        const parsed: Record<string, string> = {}
+        cookieMatch[1].split(';').forEach((part) => {
+          const eq = part.trim().indexOf('=')
+          if (eq > 0) {
+            const key = part.trim().substring(0, eq)
+            const val = part.trim().substring(eq + 1)
+            if (key.startsWith('__ddg')) parsed[key] = val
+          }
+        })
+        if (Object.keys(parsed).length > 0) {
+          this.cachedCookies = parsed
+        }
+      }
+    } catch {
+      // homepage fetch failed, will rely on defaults
+    }
+  }
+
+  private async ensureCookies(): Promise<void> {
+    if (this.cachedCookies) return
+    if (this.cookieFetchInProgress) {
+      await this.cookieFetchInProgress
+      return
+    }
+    this.cookieFetchInProgress = this.fetchFreshCookies()
+    await this.cookieFetchInProgress
+    this.cookieFetchInProgress = null
+    if (!this.cachedCookies) {
+      this.cachedCookies = this.getDefaultCookies()
+    }
+  }
+
+  private async getHeaders(isApi: boolean = false): Promise<Record<string, string>> {
+    await this.ensureCookies()
+
+    const cookieString = Object.entries(this.cachedCookies || this.getDefaultCookies())
       .map(([key, val]) => `${key}=${val}`)
       .join('; ')
 
@@ -86,7 +157,7 @@ export class AnimePaheProvider implements Provider {
     try {
       const response = await fetch(url, {
         method: 'GET',
-        headers: this.getHeaders(isApi),
+        headers: await this.getHeaders(isApi),
       })
 
       const text = await response.text()
@@ -94,8 +165,18 @@ export class AnimePaheProvider implements Provider {
       if (!response.ok) {
         if (response.status === 403 || text.includes('DDoS-Guard')) {
           logger.error(
-            'DDoS-Guard blocked the request! Your ANIMEPAHE_COOKIES in .env are likely expired.'
+            'DDoS-Guard blocked the request! Refreshing cookies and retrying...'
           )
+          this.cachedCookies = null
+          const retryResp = await fetch(url, {
+            method: 'GET',
+            headers: await this.getHeaders(isApi),
+          })
+          const retryText = await retryResp.text()
+          if (!retryResp.ok) {
+            throw new Error(`HTTP ${retryResp.status}`)
+          }
+          return retryText
         }
         throw new Error(`HTTP ${response.status}`)
       }
