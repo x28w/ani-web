@@ -1,4 +1,3 @@
-import React from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   FaPlay,
@@ -7,17 +6,20 @@ import {
   FaChevronDown,
   FaChevronUp,
   FaStar,
-  FaCalendarAlt,
   FaTv,
   FaClock,
   FaLayerGroup,
+  FaListUl,
+  FaStepForward,
 } from 'react-icons/fa'
 import { useState, useMemo } from 'react'
 import { useAnimeInfoData } from '../../hooks/useAnimeInfoData'
+import { useContinueWatchingFast } from '../../hooks/useAnimeData'
 import { fixThumbnailUrl } from '../../lib/utils'
 import { useTitlePreference } from '../../contexts/TitlePreferenceContext'
+import { useWatchQueue } from '../../contexts/WatchQueueContext'
+import { resolveShowId } from '../../lib/showId'
 import styles from './AnimeInfo.module.css'
-import ErrorMessage from '../common/ErrorMessage'
 
 const ensureHttpProtocol = (url: string): string => {
   if (!url) return url
@@ -61,6 +63,18 @@ export default function AnimeInfo() {
     handleToggleDetails,
   } = useAnimeInfoData(showId)
 
+  const { data: continueWatchingData } = useContinueWatchingFast()
+  const activeWatch = useMemo(() => {
+    if (!continueWatchingData || !showId) return null
+    return continueWatchingData.find(
+      (item) => item.id === showId || item._id === showId
+    ) || null
+  }, [continueWatchingData, showId])
+
+  const { add: addToQueue, isQueued, remove: removeFromQueue } = useWatchQueue()
+  const showIdResolved = showId ? resolveShowId({ id: showId, _id: showId }) : null
+  const inQueue = showIdResolved ? isQueued(showIdResolved) : false
+
   const getDisplayTitle = () => {
     if (!showMeta?.name) return ''
     if (titlePreference === 'name') return showMeta.name
@@ -71,6 +85,28 @@ export default function AnimeInfo() {
 
   const handleStartWatching = () => {
     if (showId) navigate(`/watch/${showId}`)
+  }
+
+  const handleContinueWatching = () => {
+    if (showId && activeWatch?.episodeNumber) {
+      navigate(`/watch/${showId}/${activeWatch.episodeNumber}`)
+    } else if (showId) {
+      navigate(`/watch/${showId}`)
+    }
+  }
+
+  const handleQueueToggle = () => {
+    if (!showIdResolved || !showMeta?.name) return
+    if (inQueue) removeFromQueue(showIdResolved)
+    else
+      addToQueue({
+        id: showIdResolved,
+        name: showMeta.name,
+        thumbnail: showMeta.thumbnail || '',
+        nativeName: showMeta.names?.native,
+        englishName: showMeta.names?.english,
+        type: showMeta.type,
+      })
   }
 
   const bannerUrl = useMemo(() => {
@@ -166,10 +202,17 @@ export default function AnimeInfo() {
             </div>
 
             <div className={styles.actions}>
-              <button className={styles.watchBtn} onClick={handleStartWatching}>
-                <FaPlay size={14} />
-                Start Watching
-              </button>
+              {activeWatch ? (
+                <button className={styles.watchBtn} onClick={handleContinueWatching}>
+                  <FaPlay size={14} />
+                  Continue EP {activeWatch.episodeNumber}
+                </button>
+              ) : (
+                <button className={styles.watchBtn} onClick={handleStartWatching}>
+                  <FaPlay size={14} />
+                  Start Watching
+                </button>
+              )}
               <button
                 className={`${styles.watchlistBtn} ${inWatchlist ? styles.active : ''}`}
                 onClick={toggleWatchlist}
@@ -177,6 +220,27 @@ export default function AnimeInfo() {
                 {inWatchlist ? <FaCheck size={14} /> : <FaPlus size={14} />}
                 {inWatchlist ? 'In Watchlist' : 'Add to Watchlist'}
               </button>
+              {showIdResolved && showMeta?.name && (
+                <button
+                  className={`${styles.watchlistBtn} ${inQueue ? styles.active : ''}`}
+                  onClick={handleQueueToggle}
+                >
+                  <FaListUl size={14} />
+                  {inQueue ? 'In Queue' : 'Queue'}
+                </button>
+              )}
+              {activeWatch && showMeta?.episodeCount && Number(activeWatch.episodeNumber) < Number(showMeta.episodeCount) && (
+                <button
+                  className={styles.watchBtn}
+                  onClick={() => {
+                    const nextEp = Number(activeWatch.episodeNumber) + 1
+                    if (showId) navigate(`/watch/${showId}/${nextEp}`)
+                  }}
+                >
+                  <FaStepForward size={14} />
+                  Next EP
+                </button>
+              )}
             </div>
           </div>
         </div>

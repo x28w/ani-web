@@ -686,16 +686,59 @@
   font-weight: 600;
 }
 
-.toggleContainer {
+.modeToggleGroup {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
-.toggleContainer span {
+.modeBtn {
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  padding: 0.75rem 1.25rem;
+  font-weight: 600;
   font-size: 0.85rem;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  letter-spacing: 0.05em;
+}
+
+.modeBtn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+.modeBtn.modeActive {
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.nativeToggleBtn {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #93c5fd;
+}
+
+.nativeToggleBtn:hover {
+  background: rgba(59, 130, 246, 0.16);
+  border-color: rgba(96, 165, 250, 0.55);
+  color: #dbeafe;
+}
+
+.nativeToggleActive {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #60a5fa;
+  color: white;
+}
+
+.nativeToggleActive:hover {
+  background: rgba(59, 130, 246, 0.3);
+  border-color: #93c5fd;
+  color: white;
 }
 
 .sourceLoader {

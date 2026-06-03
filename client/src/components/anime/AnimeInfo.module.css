@@ -184,6 +184,7 @@
 /* Actions */
 .actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-4);
   margin-top: auto;
 }

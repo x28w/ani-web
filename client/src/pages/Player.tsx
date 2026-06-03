@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import styles from './Player.module.css'
 import layoutStyles from './PlayerPageLayout.module.css'
-import ToggleSwitch from '../components/common/ToggleSwitch'
 import {
   FaCheck,
   FaPlus,
@@ -857,17 +856,6 @@ const Player: React.FC = () => {
       </aside>
 
       <div className={layoutStyles.playerMain}>
-        <div className={layoutStyles.playerTopBar}>
-          <button
-            type="button"
-            className={layoutStyles.theaterToggle}
-            onClick={() => setTheaterMode((v) => !v)}
-            aria-pressed={theaterMode}
-          >
-            {theaterMode ? <FaCompress aria-hidden /> : <FaExpand aria-hidden />}
-            {theaterMode ? 'Exit theater' : 'Theater mode'}
-          </button>
-        </div>
         <div
           ref={refs.playerContainerRef}
           className={`${styles.videoContainer} ${!player.state.isFullscreen ? layoutStyles.videoPlayerWrapper : ''} ${player.state.isFullscreen ? styles.fullscreenActive : ''}`}
@@ -1185,36 +1173,56 @@ const Player: React.FC = () => {
                     {isUpdatingWatchlistStatus ? 'Saving...' : 'Move to Completed'}
                   </button>
                 )}
-                <div className={styles.toggleContainer}>
-                  <span>SUB</span>
-                  <ToggleSwitch
-                    id="mode-switch"
-                    isChecked={state.currentMode === 'dub'}
-                    onChange={(e) => {
-                      const mode = e.target.checked ? 'dub' : 'sub'
-                      dispatch({ type: 'SET_MODE', payload: mode })
-                      localStorage.setItem('preferredMode', mode)
+                <div className={styles.modeToggleGroup}>
+                  <button
+                    type="button"
+                    className={`${styles.modeBtn} ${state.currentMode === 'sub' ? styles.modeActive : ''}`}
+                    onClick={() => {
+                      dispatch({ type: 'SET_MODE', payload: 'sub' })
+                      localStorage.setItem('preferredMode', 'sub')
                     }}
-                  />
-                  <span>DUB</span>
+                    aria-pressed={state.currentMode === 'sub'}
+                  >
+                    SUB
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.modeBtn} ${state.currentMode === 'dub' ? styles.modeActive : ''}`}
+                    onClick={() => {
+                      dispatch({ type: 'SET_MODE', payload: 'dub' })
+                      localStorage.setItem('preferredMode', 'dub')
+                    }}
+                    aria-pressed={state.currentMode === 'dub'}
+                  >
+                    DUB
+                  </button>
                 </div>
                 {window.innerWidth >= 768 && (
-                  <div className={styles.toggleContainer}>
-                    <span>Native</span>
-                    <ToggleSwitch
-                      id="native-player-switch"
-                      isChecked={state.forceNativePlayer}
-                      onChange={(e) => {
-                        const checked = e.target.checked
-                        dispatch({
-                          type: 'SET_STATE',
-                          payload: { forceNativePlayer: checked },
-                        })
-                        localStorage.setItem('forceNativePlayer', checked.toString())
-                      }}
-                    />
-                  </div>
+                  <button
+                    type="button"
+                    className={`${styles.watchlistBtn} ${styles.nativeToggleBtn} ${state.forceNativePlayer ? styles.nativeToggleActive : ''}`}
+                    onClick={() => {
+                      const checked = !state.forceNativePlayer
+                      dispatch({
+                        type: 'SET_STATE',
+                        payload: { forceNativePlayer: checked },
+                      })
+                      localStorage.setItem('forceNativePlayer', checked.toString())
+                    }}
+                    aria-pressed={state.forceNativePlayer}
+                  >
+                    {state.forceNativePlayer ? 'Native On' : 'Native Off'}
+                  </button>
                 )}
+                <button
+                  type="button"
+                  className={layoutStyles.theaterToggle}
+                  onClick={() => setTheaterMode((v) => !v)}
+                  aria-pressed={theaterMode}
+                >
+                  {theaterMode ? <FaCompress aria-hidden /> : <FaExpand aria-hidden />}
+                  {theaterMode ? 'Exit theater' : 'Theater'}
+                </button>
               </div>
             </div>
           </div>

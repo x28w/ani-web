@@ -26,12 +26,6 @@
   pointer-events: none;
 }
 
-.playerTopBar {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: var(--space-2);
-}
-
 .theaterToggle {
   display: inline-flex;
   align-items: center;
@@ -48,6 +42,7 @@
     color var(--transition-fast),
     border-color var(--transition-fast),
     background var(--transition-fast);
+  white-space: nowrap;
 }
 
 .theaterToggle:hover {
@@ -73,13 +68,28 @@
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-xl);
   height: calc(100vh - var(--header-height) - 4rem);
+  max-height: calc(100vh - var(--header-height) - 4rem);
   position: sticky;
   top: calc(var(--header-height) + 2rem);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   min-height: 0;
   display: flex;
   flex-direction: column;
   animation: slideUpIn 0.8s var(--ease-smooth);
+}
+
+.episodeSidebar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.episodeSidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.episodeSidebar::-webkit-scrollbar-thumb {
+  background: var(--border-secondary);
+  border-radius: var(--radius-full);
 }
 
 .episodeSidebarHead {
