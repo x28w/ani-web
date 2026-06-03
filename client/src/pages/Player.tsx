@@ -1138,133 +1138,150 @@ const Player: React.FC = () => {
                 </div>
               </div>
               <div className={styles.controls}>
-                <button
-                  className={`${styles.watchlistBtn} ${state.inWatchlist ? styles.inList : ''}`}
-                  onClick={toggleWatchlist}
-                >
-                  {state.inWatchlist ? <FaCheck size={14} /> : <FaPlus size={14} />}
-                  {state.inWatchlist ? 'In Watchlist' : 'Add to Watchlist'}
-                </button>
-                {showIdResolved && state.showMeta.name && (
+                <div className={styles.controlGroup}>
+                  {hasPrevEpisode && (
+                    <button
+                      type="button"
+                      className={styles.episodeNavBtn}
+                      onClick={() => {
+                        const currentIndex = state.episodes.findIndex((ep) => ep === state.currentEpisode)
+                        if (currentIndex > 0) {
+                          navigate(`/watch/${showId}/${state.episodes[currentIndex - 1]}`)
+                        }
+                      }}
+                    >
+                      <FaStepBackward size={14} />
+                      Prev
+                    </button>
+                  )}
+                  {hasNextEpisode && (
+                    <button
+                      type="button"
+                      className={styles.nextEpBtn}
+                      onClick={handleNextEpisode}
+                    >
+                      Next
+                      <FaStepForward size={14} />
+                    </button>
+                  )}
+                </div>
+
+                <div className={styles.controlDivider} />
+
+                <div className={styles.controlGroup}>
                   <button
-                    type="button"
-                    className={`${styles.watchlistBtn} ${inQueue ? styles.inList : ''}`}
-                    onClick={() => {
-                      if (inQueue) removeFromQueue(showIdResolved)
-                      else
-                        addToQueue({
-                          id: showIdResolved,
-                          name: state.showMeta.name,
-                          thumbnail: state.showMeta.thumbnail || '',
-                          nativeName: state.showMeta.names?.native,
-                          englishName: state.showMeta.names?.english,
-                          type: state.showMeta.type,
+                    className={`${styles.watchlistBtn} ${state.inWatchlist ? styles.inList : ''}`}
+                    onClick={toggleWatchlist}
+                  >
+                    {state.inWatchlist ? <FaCheck size={14} /> : <FaPlus size={14} />}
+                    {state.inWatchlist ? 'In Watchlist' : 'Watchlist'}
+                  </button>
+                  {showIdResolved && state.showMeta.name && (
+                    <button
+                      type="button"
+                      className={`${styles.watchlistBtn} ${inQueue ? styles.inList : ''}`}
+                      onClick={() => {
+                        if (inQueue) removeFromQueue(showIdResolved)
+                        else
+                          addToQueue({
+                            id: showIdResolved,
+                            name: state.showMeta.name,
+                            thumbnail: state.showMeta.thumbnail || '',
+                            nativeName: state.showMeta.names?.native,
+                            englishName: state.showMeta.names?.english,
+                            type: state.showMeta.type,
+                          })
+                      }}
+                    >
+                      <FaListUl size={14} />
+                      {inQueue ? 'In queue' : 'Queue'}
+                    </button>
+                  )}
+                </div>
+
+                <div className={styles.controlDivider} />
+
+                <div className={styles.controlGroup}>
+                  {showManualWatchedButton && (
+                    <button
+                      className={`${styles.watchlistBtn} ${styles.markWatchedBtn} ${isCurrentEpisodeWatched ? styles.markWatchedDone : ''}`}
+                      onClick={handleMarkEpisodeWatched}
+                      disabled={isMarkingWatched || !state.currentEpisode}
+                    >
+                      <FaCheck size={14} />
+                      {isMarkingWatched
+                        ? 'Saving...'
+                        : isCurrentEpisodeWatched
+                          ? 'Watched'
+                          : 'Mark Watched'}
+                    </button>
+                  )}
+                  {canMoveToCompleted && (
+                    <button
+                      className={`${styles.watchlistBtn} ${styles.completeSeriesBtn}`}
+                      onClick={moveToCompleted}
+                      disabled={isUpdatingWatchlistStatus}
+                    >
+                      <FaCheck size={14} />
+                      {isUpdatingWatchlistStatus ? 'Saving...' : 'Complete'}
+                    </button>
+                  )}
+                </div>
+
+                <div className={styles.controlDivider} />
+
+                <div className={styles.controlGroup}>
+                  <div className={styles.modeToggleGroup}>
+                    <button
+                      type="button"
+                      className={`${styles.modeBtn} ${state.currentMode === 'sub' ? styles.modeActive : ''}`}
+                      onClick={() => {
+                        dispatch({ type: 'SET_MODE', payload: 'sub' })
+                        localStorage.setItem('preferredMode', 'sub')
+                      }}
+                      aria-pressed={state.currentMode === 'sub'}
+                    >
+                      SUB
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.modeBtn} ${state.currentMode === 'dub' ? styles.modeActive : ''}`}
+                      onClick={() => {
+                        dispatch({ type: 'SET_MODE', payload: 'dub' })
+                        localStorage.setItem('preferredMode', 'dub')
+                      }}
+                      aria-pressed={state.currentMode === 'dub'}
+                    >
+                      DUB
+                    </button>
+                  </div>
+                  {window.innerWidth >= 768 && (
+                    <button
+                      type="button"
+                      className={`${styles.watchlistBtn} ${styles.nativeToggleBtn} ${state.forceNativePlayer ? styles.nativeToggleActive : ''}`}
+                      onClick={() => {
+                        const checked = !state.forceNativePlayer
+                        dispatch({
+                          type: 'SET_STATE',
+                          payload: { forceNativePlayer: checked },
                         })
-                    }}
-                  >
-                    <FaListUl size={14} />
-                    {inQueue ? 'In queue' : 'Add to queue'}
-                  </button>
-                )}
-                {hasPrevEpisode && (
+                        localStorage.setItem('forceNativePlayer', checked.toString())
+                      }}
+                      aria-pressed={state.forceNativePlayer}
+                    >
+                      {state.forceNativePlayer ? 'Native' : 'Native'}
+                    </button>
+                  )}
                   <button
                     type="button"
-                    className={styles.episodeNavBtn}
-                    onClick={() => {
-                      const currentIndex = state.episodes.findIndex((ep) => ep === state.currentEpisode)
-                      if (currentIndex > 0) {
-                        navigate(`/watch/${showId}/${state.episodes[currentIndex - 1]}`)
-                      }
-                    }}
+                    className={layoutStyles.theaterToggle}
+                    onClick={() => setTheaterMode((v) => !v)}
+                    aria-pressed={theaterMode}
                   >
-                    <FaStepBackward size={14} />
-                    Prev EP
-                  </button>
-                )}
-                {hasNextEpisode && (
-                  <button
-                    type="button"
-                    className={styles.nextEpBtn}
-                    onClick={handleNextEpisode}
-                  >
-                    <FaStepForward size={14} />
-                    Next EP
-                  </button>
-                )}
-                {showManualWatchedButton && (
-                  <button
-                    className={`${styles.watchlistBtn} ${styles.markWatchedBtn} ${isCurrentEpisodeWatched ? styles.markWatchedDone : ''}`}
-                    onClick={handleMarkEpisodeWatched}
-                    disabled={isMarkingWatched || !state.currentEpisode}
-                  >
-                    <FaCheck size={14} />
-                    {isMarkingWatched
-                      ? 'Saving...'
-                      : isCurrentEpisodeWatched
-                        ? 'Watched'
-                        : 'Mark Watched'}
-                  </button>
-                )}
-                {canMoveToCompleted && (
-                  <button
-                    className={`${styles.watchlistBtn} ${styles.completeSeriesBtn}`}
-                    onClick={moveToCompleted}
-                    disabled={isUpdatingWatchlistStatus}
-                  >
-                    <FaCheck size={14} />
-                    {isUpdatingWatchlistStatus ? 'Saving...' : 'Move to Completed'}
-                  </button>
-                )}
-                <div className={styles.modeToggleGroup}>
-                  <button
-                    type="button"
-                    className={`${styles.modeBtn} ${state.currentMode === 'sub' ? styles.modeActive : ''}`}
-                    onClick={() => {
-                      dispatch({ type: 'SET_MODE', payload: 'sub' })
-                      localStorage.setItem('preferredMode', 'sub')
-                    }}
-                    aria-pressed={state.currentMode === 'sub'}
-                  >
-                    SUB
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.modeBtn} ${state.currentMode === 'dub' ? styles.modeActive : ''}`}
-                    onClick={() => {
-                      dispatch({ type: 'SET_MODE', payload: 'dub' })
-                      localStorage.setItem('preferredMode', 'dub')
-                    }}
-                    aria-pressed={state.currentMode === 'dub'}
-                  >
-                    DUB
+                    {theaterMode ? <FaCompress aria-hidden /> : <FaExpand aria-hidden />}
+                    {theaterMode ? 'Theater' : 'Theater'}
                   </button>
                 </div>
-                {window.innerWidth >= 768 && (
-                  <button
-                    type="button"
-                    className={`${styles.watchlistBtn} ${styles.nativeToggleBtn} ${state.forceNativePlayer ? styles.nativeToggleActive : ''}`}
-                    onClick={() => {
-                      const checked = !state.forceNativePlayer
-                      dispatch({
-                        type: 'SET_STATE',
-                        payload: { forceNativePlayer: checked },
-                      })
-                      localStorage.setItem('forceNativePlayer', checked.toString())
-                    }}
-                    aria-pressed={state.forceNativePlayer}
-                  >
-                    {state.forceNativePlayer ? 'Native On' : 'Native Off'}
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className={layoutStyles.theaterToggle}
-                  onClick={() => setTheaterMode((v) => !v)}
-                  aria-pressed={theaterMode}
-                >
-                  {theaterMode ? <FaCompress aria-hidden /> : <FaExpand aria-hidden />}
-                  {theaterMode ? 'Exit theater' : 'Theater'}
-                </button>
               </div>
             </div>
           </div>
