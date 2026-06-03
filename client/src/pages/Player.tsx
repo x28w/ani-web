@@ -514,7 +514,7 @@ const Player: React.FC = () => {
             if (player.state.isFullscreen) {
               container.style.cursor = 'none'
             }
-          }, 1000)
+          }, 3000)
         }
         rafIdRef.current = null
       })
@@ -544,7 +544,7 @@ const Player: React.FC = () => {
         }
         player.actions.inactivityTimer.current = window.setTimeout(() => {
           actions.setShowControls(false)
-        }, 1000)
+        }, 3000)
       }
     }
     document.addEventListener('keydown', handleKeyDown)

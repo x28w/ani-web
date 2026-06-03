@@ -5,22 +5,13 @@
   right: 0;
   bottom: 0;
   opacity: 1;
-  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.3s ease;
   z-index: 50;
   pointer-events: none;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  background: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0.4) 0%,
-    rgba(0, 0, 0, 0.2) 15%,
-    transparent 40%,
-    transparent 60%,
-    rgba(0, 0, 0, 0.2) 85%,
-    rgba(0, 0, 0, 0.4) 100%
-  );
-  will-change: opacity;
+  justify-content: flex-end;
+  background: linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.5) 100%);
 }
 
 .controlsOverlay > * {
@@ -41,26 +32,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
+  background: rgba(0,0,0,0.6);
+  border: none;
   border-radius: 50%;
   color: white;
-  width: 80px;
-  height: 80px;
-  font-size: 2.2rem;
+  width: 60px;
+  height: 60px;
+  font-size: 1.6rem;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  box-shadow: var(--glass-shadow);
-  will-change: transform;
+  transition: background 0.2s;
 }
 
 .centerPlayPause:hover {
   background: var(--accent);
-  transform: translate(-50%, -50%) scale(1.1);
-  border-color: var(--accent);
-  box-shadow: 0 0 40px var(--accent-glow);
 }
 
 .playIconOffset {
@@ -68,42 +52,28 @@
 }
 
 .bottomControls {
-  position: absolute;
-  bottom: 24px;
-  left: 24px;
-  right: 24px;
+  padding: 12px 20px;
   display: flex;
   flex-direction: column;
   gap: 0;
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-xl);
-  padding: 16px 24px;
-  box-shadow: var(--glass-shadow);
-  transition:
-    transform 0.3s var(--ease-smooth),
-    opacity 0.3s var(--ease-smooth);
+  background: rgba(0,0,0,0.75);
 }
 
 .progressBarContainer {
   width: 100%;
-  padding: 12px 0;
+  padding: 8px 0;
   cursor: pointer;
   position: relative;
   touch-action: none;
-  display: flex;
-  align-items: center;
 }
 
 .progressBar {
   width: 100%;
   height: 4px;
-  background-color: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px;
   position: relative;
-  transition: height 0.2s;
+  transition: height 0.15s;
 }
 
 .progressBarContainer:hover .progressBar,
@@ -117,18 +87,16 @@
   top: 0;
   left: 0;
   height: 100%;
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 .watchedBar {
   background: var(--accent);
-  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-light) 100%);
   z-index: 2;
-  box-shadow: 0 0 15px var(--accent-glow);
 }
 
 .bufferedBar {
-  background-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255,255,255,0.2);
   z-index: 1;
 }
 
@@ -136,13 +104,12 @@
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%) scale(0);
-  width: 14px;
-  height: 14px;
-  background-color: white;
+  width: 12px;
+  height: 12px;
+  background: white;
   border-radius: 50%;
   z-index: 3;
-  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  transition: transform 0.15s;
 }
 
 .progressBarContainer:hover .thumb,
@@ -152,21 +119,18 @@
 
 .timeBubble {
   position: absolute;
-  bottom: 40px;
+  bottom: 32px;
   transform: translateX(-50%);
-  background: rgba(15, 15, 17, 0.95);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--glass-border);
+  background: rgba(0,0,0,0.85);
   color: white;
-  padding: 6px 10px;
-  border-radius: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
   font-size: 0.8rem;
-  font-weight: 700;
+  font-weight: 600;
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity 0.15s;
   pointer-events: none;
   white-space: nowrap;
-  box-shadow: var(--shadow-lg);
 }
 
 .progressBarContainer:hover .timeBubble {
@@ -179,53 +143,44 @@
   height: 100%;
   z-index: 10;
   opacity: 0.4;
-  transition: opacity 0.2s;
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
-.skipSegment.op {
-  background-color: var(--color-success);
-}
-.skipSegment.ed {
-  background-color: var(--accent-blue);
-}
-.skipSegment.recap {
-  background-color: var(--color-warning);
-}
+.skipSegment.op { background: var(--color-success); }
+.skipSegment.ed { background: var(--accent-blue); }
+.skipSegment.recap { background: var(--color-warning); }
 
 .bottomControlsRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .leftControls,
 .rightControls {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
+  gap: 0.75rem;
 }
 
 .controlBtn {
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 1.1rem;
+  color: rgba(255,255,255,0.8);
+  font-size: 1rem;
   cursor: pointer;
-  transition: all var(--transition-fast);
-  padding: 8px;
-  border-radius: var(--radius-md);
+  padding: 6px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: color 0.15s;
 }
 
 .controlBtn:hover {
-  background: rgba(255, 255, 255, 0.1);
   color: white;
-  transform: translateY(-2px);
 }
 
 .controlBtn.active {
@@ -233,81 +188,75 @@
 }
 
 .timeDisplay {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: rgba(255,255,255,0.7);
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
 }
 
 .skipControls {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.35rem;
 }
 
 .skipBtn {
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255,255,255,0.6);
   cursor: pointer;
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--transition-fast);
-  padding: 6px;
+  padding: 4px;
+  transition: color 0.15s;
 }
 
 .skipBtn:hover {
   color: white;
-  transform: scale(1.1);
 }
 
 .nextEpisodeBtn {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-md);
-  padding: 0.45rem 0.8rem;
-  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255,255,255,0.08);
+  border: none;
+  border-radius: 4px;
+  padding: 0.35rem 0.7rem;
+  color: rgba(255,255,255,0.8);
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background 0.15s;
   white-space: nowrap;
 }
 
 .nextEpisodeBtn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255,255,255,0.15);
   color: white;
-  transform: translateY(-1px);
-  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .episodeNavBtn {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-md);
-  padding: 0.45rem 0.8rem;
-  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255,255,255,0.08);
+  border: none;
+  border-radius: 4px;
+  padding: 0.35rem 0.7rem;
+  color: rgba(255,255,255,0.8);
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background 0.15s;
   white-space: nowrap;
 }
 
 .episodeNavBtn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255,255,255,0.15);
   color: white;
-  transform: translateY(-1px);
-  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .volumeContainer {
@@ -319,11 +268,9 @@
 .volumeSlider {
   width: 0;
   opacity: 0;
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: all 0.3s var(--ease-smooth);
+  transition: all 0.2s;
   cursor: pointer;
-  margin-left: 8px;
+  margin-left: 6px;
   -webkit-appearance: none;
   appearance: none;
   background: transparent;
@@ -332,35 +279,15 @@
 
 .volumeContainer:hover .volumeSlider,
 .volumeSlider:focus {
-  width: 80px;
+  width: 60px;
   opacity: 1;
-  transform: scaleX(1);
 }
 
 .volumeSlider::-webkit-slider-runnable-track {
   width: 100%;
   height: 4px;
-  background: linear-gradient(
-    to right,
-    var(--accent) 0%,
-    var(--accent) var(--volume-percent, 0%),
-    rgba(255, 255, 255, 0.2) var(--volume-percent, 0%),
-    rgba(255, 255, 255, 0.2) 100%
-  );
-  border-radius: 4px;
-}
-
-.volumeSlider::-moz-range-track {
-  width: 100%;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-}
-
-.volumeSlider::-moz-range-progress {
-  height: 4px;
-  background: var(--accent);
-  border-radius: 4px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 2px;
 }
 
 .volumeSlider::-webkit-slider-thumb {
@@ -370,98 +297,54 @@
   border-radius: 50%;
   background: white;
   margin-top: -4px;
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+.volumeSlider::-moz-range-track {
+  width: 100%;
+  height: 4px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 2px;
+}
+
+.volumeSlider::-moz-range-progress {
+  height: 4px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+.volumeSlider::-moz-range-thumb {
+  height: 12px;
+  width: 12px;
+  border-radius: 50%;
+  background: white;
+  border: none;
 }
 
 .toggleContainer {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .toggleLabel {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.4);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
-@media (max-width: 900px) and (orientation: landscape) {
-  .playerPageLayout {
-    padding: 0;
-    gap: 0;
-  }
-  .videoPlayerWrapper {
-    border-radius: 0;
-    height: 100vh;
-    padding-top: 0;
-  }
-  .playerInfoContainer {
-    padding: 1.5rem;
-  }
-}
-
-/* Low End Mode Overrides for Player Controls */
-:global(body.low-end) .controlsOverlay {
-  background: none !important;
-  transition: none !important;
-}
-
-:global(body.low-end) .centerPlayPause,
-:global(body.low-end) .bottomControls {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  background: #1a1a1c;
-  box-shadow: none !important;
-  transition: none !important;
-}
-
-:global(body.low-end) .centerPlayPause:hover {
-  background: var(--accent) !important;
-}
-
-:global(body.low-end) .controlBtn.active {
-  color: var(--accent) !important;
-}
-
-:global(body.low-end) .progressBar {
-  height: 4px !important;
-  transition: none !important;
-}
-
-:global(body.low-end) .watchedBar {
-  background: var(--accent) !important;
-  box-shadow: none !important;
-}
-
-:global(body.low-end) .thumb {
-  transition: none !important;
-  box-shadow: none !important;
-}
-
-:global(body.low-end) .controlBtn:hover,
-:global(body.low-end) .nextEpisodeBtn:hover {
-  transform: none !important;
-}
-
-:global(body.low-end) .timeBubble {
-  backdrop-filter: none !important;
-  background: #111 !important;
-  transition: none !important;
-}
-
 @media (max-width: 768px) {
   .bottomControls {
-    padding: 12px 16px;
-    bottom: 12px;
-    left: 12px;
-    right: 12px;
+    padding: 8px 12px;
+    bottom: 0;
+    left: 0;
+    right: 0;
   }
 
   .leftControls,
   .rightControls {
-    gap: 0.75rem;
+    gap: 0.5rem;
   }
 
   .volumeContainer,
@@ -470,8 +353,16 @@
   }
 
   .centerPlayPause {
-    width: 64px;
-    height: 64px;
-    font-size: 1.8rem;
+    width: 50px;
+    height: 50px;
+    font-size: 1.3rem;
   }
+}
+
+:global(body.low-end) .controlsOverlay {
+  background: none !important;
+}
+
+:global(body.low-end) .bottomControls {
+  background: #111 !important;
 }
