@@ -908,75 +908,23 @@ const Player: React.FC = () => {
 
           {state.selectedSource?.type === 'iframe' ? (
             !isVideoLoading && (
-              <iframe
-                src={state.selectedLink?.link}
-                className={styles.videoIframe}
-                allow="autoplay; fullscreen; picture-in-picture"
-                allowFullScreen
-                sandbox={
-                  state.selectedSource.sandbox
-                    ? `${state.selectedSource.sandbox} allow-fullscreen allow-popups allow-popups-to-escape-sandbox`
-                    : undefined
-                }
-              ></iframe>
+              <>
+                <iframe
+                  src={state.selectedLink?.link}
+                  className={styles.videoIframe}
+                  allow="autoplay; fullscreen; picture-in-picture"
+                  allowFullScreen
+                  sandbox={
+                    state.selectedSource.sandbox
+                      ? `${state.selectedSource.sandbox} allow-fullscreen allow-popups allow-popups-to-escape-sandbox`
+                      : undefined
+                  }
+                ></iframe>
+                <div className={styles.videoIframeOverlay} />
+              </>
             )
           ) : (
             <>
-              {!isVideoLoading && state.videoSources.length === 0 && (
-                <div className={styles.errorOverlay}>
-                  <p>No sources found for this episode with {state.selectedProvider}.</p>
-                  <p className={styles.errorSubtext}>
-                    Please try selecting a different provider below.
-                  </p>
-                  <button
-                    className={styles.retryButton}
-                    onClick={() => window.location.reload()}
-                    data-speed-boost-ignore="true"
-                  >
-                    Retry
-                  </button>
-                </div>
-              )}
-              {!isVideoLoading && state.videoSources.length > 0 && !showNativePlayer && (
-                <PlayerControls
-                  player={player}
-                  isAutoplayEnabled={state.isAutoplayEnabled}
-                  onAutoplayChange={handleAutoplayChange}
-                  showNextEpisodeButton={!state.showResumeModal && showNextEpisodePrompt}
-                  onNextEpisode={handleNextEpisode}
-                  onPrevEpisode={() => {
-                    const currentIndex = state.episodes.findIndex((ep) => ep === state.currentEpisode)
-                    if (currentIndex > 0) {
-                      navigate(`/watch/${showId}/${state.episodes[currentIndex - 1]}`)
-                    }
-                  }}
-                  hasPrevEpisode={(() => {
-                    const currentIndex = state.episodes.findIndex((ep) => ep === state.currentEpisode)
-                    return currentIndex > 0
-                  })()}
-                  hasNextEpisode={hasNextEpisode}
-                  videoSources={state.videoSources}
-                  selectedSource={state.selectedSource}
-                  selectedLink={state.selectedLink}
-                  onSourceChange={(source, link) => {
-                    if (refs.videoRef.current && !isNaN(refs.videoRef.current.currentTime)) {
-                      seekToTimeRef.current = refs.videoRef.current.currentTime
-                    }
-                    setPreferredSource(source.sourceName)
-                    dispatch({
-                      type: 'SET_STATE',
-                      payload: {
-                        selectedSource: source,
-                        selectedLink: link,
-                        showResumeModal: state.showResumeModal && source.type !== 'iframe',
-                      },
-                    })
-                  }}
-                  loadingVideo={state.loadingVideo}
-                  skipIntervals={state.skipIntervals}
-                />
-              )}
-
               {!isVideoLoading && state.videoSources.length > 0 && (
                 <video
                   ref={refs.videoRef}
@@ -1269,7 +1217,7 @@ const Player: React.FC = () => {
                       }}
                       aria-pressed={state.forceNativePlayer}
                     >
-                      {state.forceNativePlayer ? 'Native' : 'Native'}
+                      {state.forceNativePlayer ? 'Native On' : 'Native Off'}
                     </button>
                   )}
                   <button
@@ -1279,7 +1227,7 @@ const Player: React.FC = () => {
                     aria-pressed={theaterMode}
                   >
                     {theaterMode ? <FaCompress aria-hidden /> : <FaExpand aria-hidden />}
-                    {theaterMode ? 'Theater' : 'Theater'}
+                    Theater
                   </button>
                 </div>
               </div>
