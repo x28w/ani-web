@@ -1,18 +1,20 @@
-import React, { useEffect, useState, Suspense, lazy } from 'react'
+import React, { useEffect, useState, useCallback, Suspense, lazy } from 'react'
 import styles from './PlayerControls.module.css'
-import ToggleSwitch from '../common/ToggleSwitch'
 import {
-  FaPlay,
-  FaPause,
-  FaVolumeUp,
-  FaVolumeMute,
-  FaVolumeDown,
-  FaVolumeOff,
-  FaExpand,
-  FaCompress,
-  FaCog,
-} from 'react-icons/fa'
-import { MdReplay10, MdForward10 } from 'react-icons/md'
+  PlayIcon,
+  PauseIcon,
+  Rewind10Icon,
+  Forward10Icon,
+  VolumeIcon,
+  VolumeMutedIcon,
+  SkipNextIcon,
+  CastIcon,
+  SubtitlesIcon,
+  SpeedIcon,
+  FullscreenIcon,
+  BackArrowIcon,
+  FlagIcon,
+} from './PlayerIcons'
 import type { VideoSource, VideoLink, SkipInterval } from '../../types/player'
 import type useVideoPlayer from '../../hooks/useVideoPlayer'
 
@@ -20,8 +22,6 @@ const PlayerSettings = lazy(() => import('./PlayerSettings'))
 
 interface PlayerControlsProps {
   player: ReturnType<typeof useVideoPlayer>
-  isAutoplayEnabled: boolean
-  onAutoplayChange: (checked: boolean) => void
   showNextEpisodeButton: boolean
   onNextEpisode: () => void
   onPrevEpisode: () => void
@@ -31,17 +31,17 @@ interface PlayerControlsProps {
   selectedSource: VideoSource | null
   selectedLink: VideoLink | null
   onSourceChange: (source: VideoSource, link: VideoLink) => void
-  loadingVideo: boolean
   skipIntervals: SkipInterval[]
+  showTitle: string
+  episodeLabel: string
 }
+
+const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2]
 
 const PlayerControls = ({
   player,
-  isAutoplayEnabled,
-  onAutoplayChange,
   showNextEpisodeButton,
   onNextEpisode,
-  onPrevEpisode,
   hasPrevEpisode,
   hasNextEpisode,
   videoSources,
@@ -49,6 +49,8 @@ const PlayerControls = ({
   selectedLink,
   onSourceChange,
   skipIntervals,
+  showTitle,
+  episodeLabel,
 }: PlayerControlsProps) => {
   const { state, refs, actions } = player
   const [showSettings, setShowSettings] = useState(false)
@@ -93,7 +95,7 @@ const PlayerControls = ({
         if (watchedBarRef.current) watchedBarRef.current.style.width = `${percent}%`
         if (thumbRef.current) thumbRef.current.style.left = `${percent}%`
         if (timeDisplayRef.current) {
-          timeDisplayRef.current.innerText = `${actions.formatTime(time)} / ${actions.formatTime(state.duration)}`
+          timeDisplayRef.current.innerText = actions.formatTime(time)
         }
       }
     }
@@ -158,7 +160,7 @@ const PlayerControls = ({
       if (watchedBarRef.current) watchedBarRef.current.style.width = `${percent100}%`
       if (thumbRef.current) thumbRef.current.style.left = `${percent100}%`
       if (timeDisplayRef.current) {
-        timeDisplayRef.current.innerText = `${actions.formatTime(scrubTime)} / ${actions.formatTime(state.duration)}`
+        timeDisplayRef.current.innerText = actions.formatTime(scrubTime)
       }
       actions.setHoverTime({ time: scrubTime, position: e.clientX - rect.left })
     }
@@ -190,12 +192,28 @@ const PlayerControls = ({
     })
   }
 
-  const renderVolumeIcon = () => {
-    if (state.isMuted) return <FaVolumeMute />
-    if (state.volume === 0) return <FaVolumeOff />
-    if (state.volume < 0.5) return <FaVolumeDown />
-    return <FaVolumeUp />
-  }
+  const cycleSpeed = useCallback(() => {
+    if (!refs.videoRef.current) return
+    const currentSpeed = refs.videoRef.current.playbackRate
+    const idx = SPEEDS.indexOf(currentSpeed)
+    const nextIdx = (idx + 1) % SPEEDS.length
+    const newSpeed = SPEEDS[nextIdx]
+    refs.videoRef.current.playbackRate = newSpeed
+    if (newSpeed >= 1.5 && !state.isSpeedBoostActive) {
+      actions.setIsSpeedBoostActive(true)
+    } else if (newSpeed < 1.5 && state.isSpeedBoostActive) {
+      actions.setIsSpeedBoostActive(false)
+    }
+    localStorage.setItem('playbackSpeed', newSpeed.toString())
+  }, [refs.videoRef, state.isSpeedBoostActive, actions])
+
+  const handleCast = useCallback(() => {
+    if ('mediaSession' in navigator) {
+      try {
+        navigator.mediaSession.setActionHandler('seekforward', null)
+      } catch {}
+    }
+  }, [])
 
   return (
     <div
@@ -207,6 +225,15 @@ const PlayerControls = ({
         }
       }}
     >
+      <div className={styles.topControls}>
+        <button className={styles.topCornerBtn} onClick={() => window.history.back()} aria-label="Back">
+          <BackArrowIcon size={22} />
+        </button>
+        <button className={styles.topCornerBtn} aria-label="Report">
+          <FlagIcon size={22} />
+        </button>
+      </div>
+
       <button
         className={styles.centerPlayPause}
         data-speed-boost-ignore="true"
@@ -216,7 +243,7 @@ const PlayerControls = ({
         }}
         aria-label={state.isPlaying ? 'Pause' : 'Play'}
       >
-        {state.isPlaying ? <FaPause /> : <FaPlay className={styles.playIconOffset} />}
+        {state.isPlaying ? <PauseIcon size={28} /> : <PlayIcon size={28} />}
       </button>
 
       <div className={styles.bottomControls} data-speed-boost-ignore="true">
@@ -233,6 +260,10 @@ const PlayerControls = ({
             </div>
           )}
           <div className={styles.progressBar}>
+            <div className={styles.bufferedBar} ref={bufferedBarRef} />
+            <div className={styles.watchedBar} ref={watchedBarRef} />
+            <div className={styles.thumb} ref={thumbRef} onMouseDown={handleThumbMouseDown} />
+
             {state.duration > 0 && player.state.currentSkipInterval && (
               <div
                 className={`${styles.skipSegment} ${styles[player.state.currentSkipInterval.skip_type]}`}
@@ -242,9 +273,6 @@ const PlayerControls = ({
                 }}
               />
             )}
-            <div className={styles.bufferedBar} ref={bufferedBarRef} />
-            <div className={styles.watchedBar} ref={watchedBarRef} />
-            <div className={styles.thumb} ref={thumbRef} onMouseDown={handleThumbMouseDown} />
             {skipIntervals.map((interval) => {
               const startPercent = (interval.start_time / state.duration) * 100
               const widthPercent = ((interval.end_time - interval.start_time) / state.duration) * 100
@@ -260,109 +288,62 @@ const PlayerControls = ({
           </div>
         </div>
 
-        <div className={styles.bottomControlsRow}>
-          <div className={styles.leftControls}>
-            <button className={styles.controlBtn} onClick={actions.togglePlay} aria-label={state.isPlaying ? 'Pause' : 'Play'}>
-              {state.isPlaying ? <FaPause /> : <FaPlay />}
+        <div className={styles.controlBar}>
+          <div className={styles.controlLeft}>
+            <button className={styles.iconBtn} onClick={actions.togglePlay} aria-label={state.isPlaying ? 'Pause' : 'Play'}>
+              {state.isPlaying ? <PauseIcon size={22} /> : <PlayIcon size={22} />}
             </button>
-
-            <span className={styles.timeDisplay} ref={timeDisplayRef}>
-              {actions.formatTime(currentTimeRef.current)} / {actions.formatTime(state.duration)}
-            </span>
-
-            {state.currentSkipInterval && !state.isAutoSkipEnabled && (
-              <button
-                className={styles.skipCurrentBtn}
-                onClick={() => {
-                  if (refs.videoRef.current && state.currentSkipInterval) {
-                    refs.videoRef.current.currentTime = state.currentSkipInterval.end_time
-                    actions.setCurrentSkipInterval(null)
-                  }
-                }}
-              >
-                Skip {state.currentSkipInterval.skip_type === 'op' ? 'Intro' : 'Ending'}
+            <button className={styles.iconBtn} onClick={() => actions.seek(-10)} aria-label="Rewind 10s">
+              <Rewind10Icon size={22} />
+            </button>
+            <button className={styles.iconBtn} onClick={() => actions.seek(10)} aria-label="Forward 10s">
+              <Forward10Icon size={22} />
+            </button>
+            <div className={styles.volumeArea}>
+              <button className={styles.iconBtn} onClick={actions.toggleMute} aria-label={state.isMuted ? 'Unmute' : 'Mute'}>
+                {state.isMuted || state.volume === 0 ? <VolumeMutedIcon size={22} /> : <VolumeIcon size={22} />}
               </button>
-            )}
+              <div className={styles.volumeSliderTrack}>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={state.isMuted ? 0 : state.volume}
+                  onChange={handleVolumeChange}
+                  className={styles.volumeSlider}
+                />
+              </div>
+            </div>
           </div>
 
-          <div className={styles.rightControls}>
-            <div className={styles.skipControls}>
-              <button
-                className={styles.skipBtn}
-                onClick={() => actions.seek(-10)}
-                title="Back 10s"
-                aria-label="Skip back 10 seconds"
-              >
-                <MdReplay10 />
-              </button>
-              <button
-                className={styles.skipBtn}
-                onClick={() => actions.seek(10)}
-                title="Forward 10s"
-                aria-label="Skip forward 10 seconds"
-              >
-                <MdForward10 />
-              </button>
-            </div>
+          <div className={styles.controlCenter}>
+            <span className={styles.showTitleText}>{showTitle}</span>
+            <span className={styles.episodeText}>{episodeLabel}</span>
+          </div>
 
-            <div className={styles.volumeContainer}>
-              <button className={styles.controlBtn} onClick={actions.toggleMute} aria-label={state.isMuted ? 'Unmute' : 'Mute'}>
-                {renderVolumeIcon()}
-              </button>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={state.isMuted ? 0 : state.volume}
-                onChange={handleVolumeChange}
-                className={styles.volumeSlider}
-              />
-            </div>
-
-            {hasPrevEpisode && (
-              <button
-                className={styles.episodeNavBtn}
-                onClick={onPrevEpisode}
-                title="Previous episode"
-              >
-                <MdReplay10 style={{ transform: 'scaleX(-1)' }} />
-                Prev
-              </button>
-            )}
+          <div className={styles.controlRight}>
             {(hasNextEpisode || showNextEpisodeButton) && (
-              <button
-                className={styles.episodeNavBtn}
-                onClick={onNextEpisode}
-                title="Next episode"
-              >
-                Next
-                <MdForward10 />
+              <button className={styles.iconBtn} onClick={onNextEpisode} aria-label="Next episode">
+                <SkipNextIcon size={22} />
               </button>
             )}
-
-            <div className={styles.toggleContainer}>
-              <ToggleSwitch
-                id="autoplay-toggle-overlay"
-                isChecked={isAutoplayEnabled}
-                onChange={(e) => onAutoplayChange(e.target.checked)}
-              />
-              <label htmlFor="autoplay-toggle-overlay" className={styles.toggleLabel}>
-                Auto
-              </label>
-            </div>
-
-            <button
-              ref={settingsBtnRef}
-              className={`${styles.controlBtn} ${showSettings ? styles.active : ''}`}
-              onClick={() => setShowSettings(!showSettings)}
-              aria-label="Settings"
-            >
-              <FaCog />
+            <button className={styles.iconBtn} onClick={handleCast} aria-label="Cast">
+              <CastIcon size={22} />
             </button>
-
-            <button className={styles.controlBtn} onClick={actions.toggleFullscreen} aria-label={state.isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
-              {state.isFullscreen ? <FaCompress /> : <FaExpand />}
+            <button className={styles.iconBtn} onClick={() => setShowSettings(!showSettings)} aria-label="Subtitles">
+              <SubtitlesIcon size={22} />
+            </button>
+            <div className={styles.speedContainer}>
+              <button className={styles.iconBtn} onClick={cycleSpeed} aria-label="Playback speed">
+                <SpeedIcon size={22} />
+              </button>
+              {refs.videoRef.current && refs.videoRef.current.playbackRate !== 1 && (
+                <span className={styles.speedLabel}>{refs.videoRef.current.playbackRate}x</span>
+              )}
+            </div>
+            <button className={styles.iconBtn} onClick={actions.toggleFullscreen} aria-label={state.isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
+              <FullscreenIcon size={22} />
             </button>
           </div>
         </div>

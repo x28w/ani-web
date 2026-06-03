@@ -1,1 +1,0 @@
-import{u as s}from"./vendor-CnzpHFME.js";const r="_slider_1dibw_27",c={switch:"_switch_1dibw_1",slider:r},a=({isChecked:t,onChange:l,id:e,disabled:i=!1})=>s("label",{className:c.switch,htmlFor:e,children:[s("input",{type:"checkbox",id:e,checked:t,onChange:l,disabled:i}),s("span",{className:c.slider})]});export{a as T};

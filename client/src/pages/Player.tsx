@@ -942,8 +942,6 @@ const Player: React.FC = () => {
               {!showNativePlayer && !isVideoLoading && state.videoSources.length > 0 && (
                 <PlayerControls
                   player={player}
-                  isAutoplayEnabled={state.isAutoplayEnabled}
-                  onAutoplayChange={handleAutoplayChange}
                   showNextEpisodeButton={showNextEpisodePrompt}
                   onNextEpisode={handleNextEpisode}
                   onPrevEpisode={() => {
@@ -971,6 +969,8 @@ const Player: React.FC = () => {
                     })
                   }}
                   skipIntervals={state.skipIntervals}
+                  showTitle={displayTitle}
+                  episodeLabel={`Episode ${state.currentEpisode || ''}`}
                 />
               )}
             </>
