@@ -13,6 +13,8 @@ import {
   FaExpand,
   FaCompress,
   FaListUl,
+  FaStepBackward,
+  FaStepForward,
 } from 'react-icons/fa'
 import PlayerRelatedShows from '../components/player/PlayerRelatedShows'
 import { useWatchQueue } from '../contexts/WatchQueueContext'
@@ -1158,6 +1160,31 @@ const Player: React.FC = () => {
                   >
                     <FaListUl size={14} />
                     {inQueue ? 'In queue' : 'Add to queue'}
+                  </button>
+                )}
+                {hasPrevEpisode && (
+                  <button
+                    type="button"
+                    className={styles.episodeNavBtn}
+                    onClick={() => {
+                      const currentIndex = state.episodes.findIndex((ep) => ep === state.currentEpisode)
+                      if (currentIndex > 0) {
+                        navigate(`/watch/${showId}/${state.episodes[currentIndex - 1]}`)
+                      }
+                    }}
+                  >
+                    <FaStepBackward size={14} />
+                    Prev EP
+                  </button>
+                )}
+                {hasNextEpisode && (
+                  <button
+                    type="button"
+                    className={styles.nextEpBtn}
+                    onClick={handleNextEpisode}
+                  >
+                    <FaStepForward size={14} />
+                    Next EP
                   </button>
                 )}
                 {showManualWatchedButton && (
