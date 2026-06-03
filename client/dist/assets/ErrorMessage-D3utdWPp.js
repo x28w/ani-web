@@ -1,0 +1,1 @@
+import{u as r}from"./vendor-CnzpHFME.js";import{a7 as e}from"./index-CBDHCb3n.js";const n="_errorBox_s97mi_1",a="_icon_s97mi_25",o={errorBox:n,icon:a},t=({message:s})=>r("div",{className:o.errorBox,children:[r(e,{className:o.icon}),r("span",{children:s})]});export{t as E};

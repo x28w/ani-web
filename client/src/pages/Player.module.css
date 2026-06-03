@@ -407,46 +407,36 @@
   animation: spin 1s linear infinite;
 }
 
+.noSourcesOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: #000;
+  z-index: 5;
+}
+
+.noSourcesLogo {
+  width: 48px;
+  height: 48px;
+  opacity: 0.5;
+}
+
+.noSourcesText {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
 @media (max-width: 768px) {
-  .bottomControls {
-    padding: 0.75rem;
-    bottom: 8px;
-    left: 8px;
-    right: 8px;
-    border-radius: 12px;
-  }
-
-  .leftControls,
-  .rightControls {
-    gap: 0.5rem;
-  }
-
-  .controlBtn {
-    padding: 8px;
-    font-size: 1.1rem;
-  }
-
-  .timeDisplay {
-    font-size: 0.75rem;
-    margin-left: 0.25rem;
-  }
-
-  .centerPlayPause {
-    width: 64px;
-    height: 64px;
-    font-size: 2rem;
-  }
-
   .titleContainer h1 {
     font-size: 1.25rem;
-  }
-
-  .volumeSlider {
-    display: none;
-  }
-
-  .volumeContainer {
-    display: none;
   }
 
   .skipBubble {
@@ -458,28 +448,6 @@
   }
   .skipText {
     font-size: 0.8rem;
-  }
-}
-
-@media (max-width: 900px) and (orientation: landscape) {
-  .bottomControls {
-    bottom: 8px;
-    left: max(8px, env(safe-area-inset-left));
-    right: max(8px, env(safe-area-inset-right));
-    padding: 0.5rem 1rem;
-  }
-
-  .centerPlayPause {
-    width: 54px;
-    height: 54px;
-    font-size: 1.5rem;
-  }
-
-  .skipIndicatorContainer.leftSkip {
-    left: max(0px, env(safe-area-inset-left));
-  }
-  .skipIndicatorContainer.rightSkip {
-    right: max(0px, env(safe-area-inset-right));
   }
 }
 

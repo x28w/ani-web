@@ -906,6 +906,13 @@ const Player: React.FC = () => {
             </div>
           )}
 
+          {!isVideoLoading && state.videoSources.length === 0 && state.selectedSource?.type !== 'iframe' && (
+            <div className={styles.noSourcesOverlay}>
+              <img src="/logo.png" alt="ani-web" className={styles.noSourcesLogo} />
+              <span className={styles.noSourcesText}>Select another source</span>
+            </div>
+          )}
+
           {state.selectedSource?.type === 'iframe' ? (
             !isVideoLoading && (
               <>
