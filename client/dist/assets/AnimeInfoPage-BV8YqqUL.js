@@ -1,2 +1,0 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/AnimeInfo-Bzys_DAF.js","assets/vendor-CnzpHFME.js","assets/index-CX9vjtyg.js","assets/index-C3SPBS08.css","assets/useAnimeInfoData-CIwdj2kw.js","assets/AnimeInfo-BBF8e50J.css"])))=>i.map(i=>d[i]);
-import{aj as r,_ as e}from"./index-CX9vjtyg.js";import{u as o,P as a,z as t}from"./vendor-CnzpHFME.js";const i=t(()=>e(()=>import("./AnimeInfo-Bzys_DAF.js"),__vite__mapDeps([0,1,2,3,4,5])));function f(){return o(a,{fallback:o(r,{}),children:o(i,{})})}export{f as default};

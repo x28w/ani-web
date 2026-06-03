@@ -939,6 +939,40 @@ const Player: React.FC = () => {
                   onPlaying={actions.onPlaying}
                 />
               )}
+              {!showNativePlayer && !isVideoLoading && state.videoSources.length > 0 && (
+                <PlayerControls
+                  player={player}
+                  isAutoplayEnabled={state.isAutoplayEnabled}
+                  onAutoplayChange={handleAutoplayChange}
+                  showNextEpisodeButton={showNextEpisodePrompt}
+                  onNextEpisode={handleNextEpisode}
+                  onPrevEpisode={() => {
+                    const currentIndex = state.episodes.findIndex((ep) => ep === state.currentEpisode)
+                    if (currentIndex > 0) {
+                      navigate(`/watch/${showId}/${state.episodes[currentIndex - 1]}`)
+                    }
+                  }}
+                  hasPrevEpisode={hasPrevEpisode}
+                  hasNextEpisode={hasNextEpisode}
+                  videoSources={state.videoSources}
+                  selectedSource={state.selectedSource}
+                  selectedLink={state.selectedLink}
+                  onSourceChange={(source, link) => {
+                    if (refs.videoRef.current && !isNaN(refs.videoRef.current.currentTime)) {
+                      seekToTimeRef.current = refs.videoRef.current.currentTime
+                    }
+                    setPreferredSource(source.sourceName)
+                    dispatch({
+                      type: 'SET_STATE',
+                      payload: {
+                        selectedSource: source,
+                        selectedLink: link,
+                      },
+                    })
+                  }}
+                  skipIntervals={state.skipIntervals}
+                />
+              )}
             </>
           )}
         </div>

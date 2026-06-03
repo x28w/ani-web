@@ -11,7 +11,7 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  background: linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.5) 100%);
+  background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.6) 100%);
 }
 
 .controlsOverlay > * {
@@ -32,45 +32,48 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0,0,0,0.6);
+  background: rgba(0,0,0,0.5);
   border: none;
   border-radius: 50%;
   color: white;
-  width: 60px;
-  height: 60px;
-  font-size: 1.6rem;
+  width: 56px;
+  height: 56px;
+  font-size: 1.4rem;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.2s, transform 0.2s;
 }
 
 .centerPlayPause:hover {
-  background: var(--accent);
+  background: rgba(0,0,0,0.7);
+  transform: translate(-50%, -50%) scale(1.05);
 }
 
 .playIconOffset {
-  transform: translateX(3px);
+  transform: translateX(2px);
 }
 
 .bottomControls {
-  padding: 12px 20px;
+  padding: 8px 16px 12px;
   display: flex;
   flex-direction: column;
-  gap: 0;
-  background: rgba(0,0,0,0.75);
+  gap: 4px;
+  background: rgba(0,0,0,0.7);
 }
 
 .progressBarContainer {
   width: 100%;
-  padding: 8px 0;
+  height: 16px;
   cursor: pointer;
   position: relative;
   touch-action: none;
+  display: flex;
+  align-items: center;
 }
 
 .progressBar {
   width: 100%;
-  height: 4px;
-  background: rgba(255,255,255,0.15);
+  height: 3px;
+  background: rgba(255,255,255,0.2);
   border-radius: 2px;
   position: relative;
   transition: height 0.15s;
@@ -78,7 +81,7 @@
 
 .progressBarContainer:hover .progressBar,
 .progressBarContainer.scrubbing .progressBar {
-  height: 6px;
+  height: 5px;
 }
 
 .watchedBar,
@@ -96,7 +99,7 @@
 }
 
 .bufferedBar {
-  background: rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.25);
   z-index: 1;
 }
 
@@ -110,6 +113,7 @@
   border-radius: 50%;
   z-index: 3;
   transition: transform 0.15s;
+  box-shadow: 0 0 4px rgba(0,0,0,0.5);
 }
 
 .progressBarContainer:hover .thumb,
@@ -119,13 +123,13 @@
 
 .timeBubble {
   position: absolute;
-  bottom: 32px;
+  bottom: 28px;
   transform: translateX(-50%);
   background: rgba(0,0,0,0.85);
   color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.8rem;
+  padding: 3px 7px;
+  border-radius: 3px;
+  font-size: 0.75rem;
   font-weight: 600;
   opacity: 0;
   transition: opacity 0.15s;
@@ -142,7 +146,7 @@
   top: 0;
   height: 100%;
   z-index: 10;
-  opacity: 0.4;
+  opacity: 0.35;
   border-radius: 2px;
 }
 
@@ -155,24 +159,24 @@
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  margin-top: 2px;
+  gap: 8px;
 }
 
 .leftControls,
 .rightControls {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 12px;
 }
 
 .controlBtn {
   background: transparent;
   border: none;
-  color: rgba(255,255,255,0.8);
+  color: rgba(255,255,255,0.85);
   font-size: 1rem;
   cursor: pointer;
-  padding: 6px;
-  border-radius: 4px;
+  padding: 4px 6px;
+  border-radius: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -188,16 +192,18 @@
 }
 
 .timeDisplay {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 500;
   color: rgba(255,255,255,0.7);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
 }
 
 .skipControls {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 6px;
 }
 
 .skipBtn {
@@ -205,7 +211,7 @@
   border: none;
   color: rgba(255,255,255,0.6);
   cursor: pointer;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -217,52 +223,31 @@
   color: white;
 }
 
-.nextEpisodeBtn {
-  background: rgba(255,255,255,0.08);
-  border: none;
-  border-radius: 4px;
-  padding: 0.35rem 0.7rem;
-  color: rgba(255,255,255,0.8);
-  font-weight: 600;
-  font-size: 0.8rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  cursor: pointer;
-  transition: background 0.15s;
-  white-space: nowrap;
-}
-
-.nextEpisodeBtn:hover {
-  background: rgba(255,255,255,0.15);
-  color: white;
-}
-
 .episodeNavBtn {
-  background: rgba(255,255,255,0.08);
-  border: none;
-  border-radius: 4px;
-  padding: 0.35rem 0.7rem;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 3px;
+  padding: 3px 8px;
   color: rgba(255,255,255,0.8);
   font-weight: 600;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 4px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s, border-color 0.15s;
   white-space: nowrap;
 }
 
 .episodeNavBtn:hover {
-  background: rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.4);
   color: white;
 }
 
 .volumeContainer {
   display: flex;
   align-items: center;
-  position: relative;
 }
 
 .volumeSlider {
@@ -270,7 +255,7 @@
   opacity: 0;
   transition: all 0.2s;
   cursor: pointer;
-  margin-left: 6px;
+  margin-left: 4px;
   -webkit-appearance: none;
   appearance: none;
   background: transparent;
@@ -279,21 +264,21 @@
 
 .volumeContainer:hover .volumeSlider,
 .volumeSlider:focus {
-  width: 60px;
+  width: 50px;
   opacity: 1;
 }
 
 .volumeSlider::-webkit-slider-runnable-track {
   width: 100%;
-  height: 4px;
+  height: 3px;
   background: rgba(255,255,255,0.2);
   border-radius: 2px;
 }
 
 .volumeSlider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  height: 12px;
-  width: 12px;
+  height: 11px;
+  width: 11px;
   border-radius: 50%;
   background: white;
   margin-top: -4px;
@@ -301,20 +286,20 @@
 
 .volumeSlider::-moz-range-track {
   width: 100%;
-  height: 4px;
+  height: 3px;
   background: rgba(255,255,255,0.2);
   border-radius: 2px;
 }
 
 .volumeSlider::-moz-range-progress {
-  height: 4px;
+  height: 3px;
   background: var(--accent);
   border-radius: 2px;
 }
 
 .volumeSlider::-moz-range-thumb {
-  height: 12px;
-  width: 12px;
+  height: 11px;
+  width: 11px;
   border-radius: 50%;
   background: white;
   border: none;
@@ -323,28 +308,42 @@
 .toggleContainer {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 4px;
 }
 
 .toggleLabel {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 600;
   color: rgba(255,255,255,0.4);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
+.skipCurrentBtn {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  border-radius: 3px;
+  padding: 4px 10px;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.skipCurrentBtn:hover {
+  background: rgba(255,255,255,0.2);
+}
+
 @media (max-width: 768px) {
   .bottomControls {
-    padding: 8px 12px;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    padding: 4px 8px 8px;
   }
 
   .leftControls,
   .rightControls {
-    gap: 0.5rem;
+    gap: 6px;
   }
 
   .volumeContainer,
@@ -353,9 +352,22 @@
   }
 
   .centerPlayPause {
-    width: 50px;
-    height: 50px;
-    font-size: 1.3rem;
+    width: 44px;
+    height: 44px;
+    font-size: 1.1rem;
+  }
+
+  .timeDisplay {
+    font-size: 0.7rem;
+  }
+
+  .skipBtn {
+    font-size: 0.95rem;
+  }
+
+  .episodeNavBtn {
+    font-size: 0.65rem;
+    padding: 2px 6px;
   }
 }
 

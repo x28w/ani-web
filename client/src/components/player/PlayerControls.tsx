@@ -49,7 +49,7 @@ const PlayerControls = ({
   selectedLink,
   onSourceChange,
   skipIntervals,
-}) => {
+}: PlayerControlsProps) => {
   const { state, refs, actions } = player
   const [showSettings, setShowSettings] = useState(false)
   const settingsRef = React.useRef<HTMLDivElement>(null)
@@ -67,11 +67,9 @@ const PlayerControls = ({
         setShowSettings(false)
       }
     }
-
     if (showSettings) {
       document.addEventListener('mousedown', handleClickOutside)
     }
-
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
@@ -81,7 +79,6 @@ const PlayerControls = ({
   const thumbRef = React.useRef<HTMLDivElement>(null)
   const bufferedBarRef = React.useRef<HTMLDivElement>(null)
   const timeDisplayRef = React.useRef<HTMLSpanElement>(null)
-
   const currentTimeRef = React.useRef(0)
 
   useEffect(() => {
@@ -111,10 +108,8 @@ const PlayerControls = ({
 
     handleTimeUpdate()
     handleProgress()
-
     video.addEventListener('timeupdate', handleTimeUpdate)
     video.addEventListener('progress', handleProgress)
-
     return () => {
       video.removeEventListener('timeupdate', handleTimeUpdate)
       video.removeEventListener('progress', handleProgress)
@@ -130,13 +125,7 @@ const PlayerControls = ({
   }
 
   const handleProgressBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (
-      !refs.videoRef.current ||
-      !refs.progressBarRef.current ||
-      isNaN(state.duration) ||
-      state.duration === 0
-    )
-      return
+    if (!refs.videoRef.current || !refs.progressBarRef.current || isNaN(state.duration) || state.duration === 0) return
     const rect = refs.progressBarRef.current.getBoundingClientRect()
     const percent = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
     refs.videoRef.current.currentTime = percent * state.duration
@@ -158,35 +147,9 @@ const PlayerControls = ({
     refs.videoRef.current.pause()
   }
 
-  const handleSubtitleSelection = (trackId: string | null) => {
-    if (!refs.videoRef.current) return
-    actions.setActiveSubtitleTrack(trackId)
-    Array.from(refs.videoRef.current.textTracks).forEach((track) => {
-      track.mode =
-        trackId !== null &&
-        trackId !== 'off' &&
-        (track.language === trackId || track.label === trackId)
-          ? 'showing'
-          : 'hidden'
-    })
-  }
-
-  const renderVolumeIcon = () => {
-    if (state.isMuted) return <FaVolumeMute />
-    if (state.volume === 0) return <FaVolumeOff />
-    if (state.volume < 0.5) return <FaVolumeDown />
-    return <FaVolumeUp />
-  }
-
   useEffect(() => {
     const handleDocumentMouseMove = (e: MouseEvent) => {
-      if (
-        !state.isScrubbing ||
-        !refs.videoRef.current ||
-        !refs.progressBarRef.current ||
-        !state.duration
-      )
-        return
+      if (!state.isScrubbing || !refs.videoRef.current || !refs.progressBarRef.current || !state.duration) return
       const rect = refs.progressBarRef.current.getBoundingClientRect()
       const percent = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
       const scrubTime = percent * state.duration
@@ -216,9 +179,27 @@ const PlayerControls = ({
     }
   }, [state.isScrubbing, state.duration, refs.videoRef, refs.progressBarRef, actions])
 
+  const handleSubtitleSelection = (trackId: string | null) => {
+    if (!refs.videoRef.current) return
+    actions.setActiveSubtitleTrack(trackId)
+    Array.from(refs.videoRef.current.textTracks).forEach((track) => {
+      track.mode =
+        trackId !== null && trackId !== 'off' && (track.language === trackId || track.label === trackId)
+          ? 'showing'
+          : 'hidden'
+    })
+  }
+
+  const renderVolumeIcon = () => {
+    if (state.isMuted) return <FaVolumeMute />
+    if (state.volume === 0) return <FaVolumeOff />
+    if (state.volume < 0.5) return <FaVolumeDown />
+    return <FaVolumeUp />
+  }
+
   return (
     <div
-      className={`${styles.controlsOverlay} ${!state.showControls && !showSettings ? styles.hidden : ''} `}
+      className={`${styles.controlsOverlay} ${!state.showControls && !showSettings ? styles.hidden : ''}`}
       onDoubleClick={(e) => e.stopPropagation()}
       onClick={(e) => {
         if (e.target === e.currentTarget) {
@@ -240,7 +221,7 @@ const PlayerControls = ({
 
       <div className={styles.bottomControls} data-speed-boost-ignore="true">
         <div
-          className={`${styles.progressBarContainer} ${state.isScrubbing ? styles.scrubbing : ''} `}
+          className={`${styles.progressBarContainer} ${state.isScrubbing ? styles.scrubbing : ''}`}
           ref={refs.progressBarRef}
           onClick={handleProgressBarClick}
           onMouseMove={handleProgressBarMouseMove}
@@ -254,26 +235,24 @@ const PlayerControls = ({
           <div className={styles.progressBar}>
             {state.duration > 0 && player.state.currentSkipInterval && (
               <div
-                className={`${styles.skipSegment} ${styles[player.state.currentSkipInterval.skip_type]} `}
+                className={`${styles.skipSegment} ${styles[player.state.currentSkipInterval.skip_type]}`}
                 style={{
-                  left: `${(player.state.currentSkipInterval.start_time / state.duration) * 100}% `,
-                  width: `${((player.state.currentSkipInterval.end_time - player.state.currentSkipInterval.start_time) / state.duration) * 100}% `,
+                  left: `${(player.state.currentSkipInterval.start_time / state.duration) * 100}%`,
+                  width: `${((player.state.currentSkipInterval.end_time - player.state.currentSkipInterval.start_time) / state.duration) * 100}%`,
                 }}
-              ></div>
+              />
             )}
-            <div className={styles.bufferedBar} ref={bufferedBarRef}></div>
-            <div className={styles.watchedBar} ref={watchedBarRef}></div>
-            <div className={styles.thumb} ref={thumbRef} onMouseDown={handleThumbMouseDown}></div>
-
+            <div className={styles.bufferedBar} ref={bufferedBarRef} />
+            <div className={styles.watchedBar} ref={watchedBarRef} />
+            <div className={styles.thumb} ref={thumbRef} onMouseDown={handleThumbMouseDown} />
             {skipIntervals.map((interval) => {
               const startPercent = (interval.start_time / state.duration) * 100
-              const widthPercent =
-                ((interval.end_time - interval.start_time) / state.duration) * 100
+              const widthPercent = ((interval.end_time - interval.start_time) / state.duration) * 100
               return (
                 <div
                   key={interval.skip_id}
-                  className={`${styles.skipSegment} ${styles[interval.skip_type]} `}
-                  style={{ left: `${startPercent}% `, width: `${widthPercent}% ` }}
+                  className={`${styles.skipSegment} ${styles[interval.skip_type]}`}
+                  style={{ left: `${startPercent}%`, width: `${widthPercent}%` }}
                   title={interval.skip_type.toUpperCase()}
                 />
               )
@@ -283,12 +262,12 @@ const PlayerControls = ({
 
         <div className={styles.bottomControlsRow}>
           <div className={styles.leftControls}>
-            <button className={styles.controlBtn} onClick={actions.togglePlay}>
+            <button className={styles.controlBtn} onClick={actions.togglePlay} aria-label={state.isPlaying ? 'Pause' : 'Play'}>
               {state.isPlaying ? <FaPause /> : <FaPlay />}
             </button>
 
             <div className={styles.volumeContainer}>
-              <button className={styles.controlBtn} onClick={actions.toggleMute}>
+              <button className={styles.controlBtn} onClick={actions.toggleMute} aria-label={state.isMuted ? 'Unmute' : 'Mute'}>
                 {renderVolumeIcon()}
               </button>
               <input
@@ -299,11 +278,6 @@ const PlayerControls = ({
                 value={state.isMuted ? 0 : state.volume}
                 onChange={handleVolumeChange}
                 className={styles.volumeSlider}
-                style={
-                  {
-                    '--volume-percent': `${(state.isMuted ? 0 : state.volume) * 100}% `,
-                  } as React.CSSProperties
-                }
               />
             </div>
 
@@ -313,7 +287,7 @@ const PlayerControls = ({
 
             {state.currentSkipInterval && !state.isAutoSkipEnabled && (
               <button
-                className={styles.controlBtn}
+                className={styles.skipCurrentBtn}
                 onClick={() => {
                   if (refs.videoRef.current && state.currentSkipInterval) {
                     refs.videoRef.current.currentTime = state.currentSkipInterval.end_time
@@ -321,85 +295,73 @@ const PlayerControls = ({
                   }
                 }}
               >
-                Skip {state.currentSkipInterval.skip_type === 'op' ? 'Opening' : 'Ending'}
+                Skip {state.currentSkipInterval.skip_type === 'op' ? 'Intro' : 'Ending'}
               </button>
             )}
           </div>
 
           <div className={styles.rightControls}>
             <div className={styles.skipControls}>
-              {hasPrevEpisode && (
-                <button
-                  className={styles.episodeNavBtn}
-                  onClick={onPrevEpisode}
-                  title="Play previous episode"
-                >
-                  <MdReplay10 style={{ transform: 'scaleX(-1)', marginRight: 4 }} />
-                  Prev
-                </button>
-              )}
-              {(hasNextEpisode || showNextEpisodeButton) && (
-                <button
-                  className={styles.nextEpisodeBtn}
-                  onClick={onNextEpisode}
-                  title="Play next episode"
-                >
-                  Next
-                  <MdForward10 style={{ marginLeft: 4 }} />
-                </button>
-              )}
               <button
                 className={styles.skipBtn}
                 onClick={() => actions.seek(-10)}
-                title="Skip back 10s"
+                title="Back 10s"
+                aria-label="Skip back 10 seconds"
               >
                 <MdReplay10 />
               </button>
               <button
                 className={styles.skipBtn}
                 onClick={() => actions.seek(10)}
-                title="Skip forward 10s"
+                title="Forward 10s"
+                aria-label="Skip forward 10 seconds"
               >
                 <MdForward10 />
               </button>
             </div>
 
-            <div className={styles.toggleContainer}>
-              <label htmlFor="auto-skip-toggle" className={styles.toggleLabel}>
-                Auto Skip
-              </label>
-              <ToggleSwitch
-                id="auto-skip-toggle"
-                isChecked={state.isAutoSkipEnabled}
-                onChange={(e) => {
-                  const checked = e.target.checked
-                  actions.setIsAutoSkipEnabled(checked)
-                  localStorage.setItem('autoSkipEnabled', checked.toString())
-                }}
-              />
-            </div>
+            {hasPrevEpisode && (
+              <button
+                className={styles.episodeNavBtn}
+                onClick={onPrevEpisode}
+                title="Previous episode"
+              >
+                <MdReplay10 style={{ transform: 'scaleX(-1)' }} />
+                Prev
+              </button>
+            )}
+            {(hasNextEpisode || showNextEpisodeButton) && (
+              <button
+                className={styles.episodeNavBtn}
+                onClick={onNextEpisode}
+                title="Next episode"
+              >
+                Next
+                <MdForward10 />
+              </button>
+            )}
 
             <div className={styles.toggleContainer}>
-              <label htmlFor="autoplay-toggle" className={styles.toggleLabel}>
-                Autoplay
-              </label>
               <ToggleSwitch
-                id="autoplay-toggle"
+                id="autoplay-toggle-overlay"
                 isChecked={isAutoplayEnabled}
                 onChange={(e) => onAutoplayChange(e.target.checked)}
               />
+              <label htmlFor="autoplay-toggle-overlay" className={styles.toggleLabel}>
+                Auto
+              </label>
             </div>
 
             <button
               ref={settingsBtnRef}
-              className={`${styles.controlBtn} ${showSettings ? styles.active : ''} `}
+              className={`${styles.controlBtn} ${showSettings ? styles.active : ''}`}
               onClick={() => setShowSettings(!showSettings)}
               aria-label="Settings"
             >
               <FaCog />
             </button>
 
-            <button className={styles.controlBtn} onClick={actions.toggleFullscreen}>
+            <button className={styles.controlBtn} onClick={actions.toggleFullscreen} aria-label={state.isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
               {state.isFullscreen ? <FaCompress /> : <FaExpand />}
             </button>
           </div>
