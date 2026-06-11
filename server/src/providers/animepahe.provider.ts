@@ -1,6 +1,4 @@
-import * as cheerio from 'cheerio'
 import NodeCache from 'node-cache'
-
 import {
   Provider,
   Show,
@@ -11,287 +9,196 @@ import {
   ShowDetails,
   AllmangaDetails,
 } from './provider.interface'
-import logger from '../logger'
 
-interface AnimePaheSearchResult {
-  session: string
-  title: string
-  name?: string
-  poster?: string
-  image?: string
-  type?: string
-  year?: number
+interface AniListMedia {
+  id: number
+  title?: {
+    romaji?: string
+    english?: string
+    native?: string
+  }
+  coverImage?: {
+    large?: string
+  }
+  format?: string
+  episodes?: number
+  description?: string
+  status?: string
+  genres?: string[]
+  averageScore?: number
+  startDate?: { year?: number }
 }
 
-interface AnimePaheEpisode {
-  episode?: number
-  number?: number
-  session?: string
-  release_session?: string
+interface AniListPageResponse {
+  data?: {
+    Page?: {
+      media?: AniListMedia[]
+    }
+  }
 }
 
-interface AnimePaheVideoSource {
-  url: string
-  quality: string | null
-  fansub: string | null
-  audio: string | null
+interface AniListMediaResponse {
+  data?: {
+    Media?: AniListMedia
+  }
+}
+
+const ANILIST_API = 'https://graphql.anilist.co'
+const VIDNEST_BASE = 'https://vidnest.fun'
+
+const USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+
+const SEARCH_QUERY = `
+  query ($search: String, $page: Int, $perPage: Int) {
+    Page(page: $page, perPage: $perPage) {
+      media(search: $search, type: ANIME) {
+        id
+        title { romaji english native }
+        coverImage { large }
+        format
+        episodes
+        description
+        status
+        genres
+        averageScore
+        startDate { year }
+      }
+    }
+  }
+`
+
+const MEDIA_QUERY = `
+  query ($id: Int) {
+    Media(id: $id) {
+      id
+      title { romaji english native }
+      coverImage { large }
+      format
+      episodes
+      description
+      status
+      genres
+      averageScore
+      startDate { year }
+    }
+  }
+`
+
+function stripDiacritics(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 }
 
 export class AnimePaheProvider implements Provider {
   name = 'AnimePahe'
-  private base = 'https://animepahe.pw'
-  private apiBase = 'https://animepahe.pw/api'
-
   private cache: NodeCache
-  private cachedCookies: Record<string, string> | null = null
-  private cookieFetchInProgress: Promise<void> | null = null
 
   constructor(cache: NodeCache) {
     this.cache = cache
   }
 
-  private getDefaultCookies(): Record<string, string> {
+  private async anilistFetch<T>(
+    query: string,
+    variables: Record<string, unknown>,
+    retries = 2
+  ): Promise<T | null> {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const response = await fetch(ANILIST_API, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': USER_AGENT,
+          },
+          body: JSON.stringify({ query, variables }),
+        })
+
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('Retry-After')
+          const delay = retryAfter ? parseInt(retryAfter) * 1000 : 1000 * (attempt + 1)
+          if (attempt < retries) {
+            await new Promise((r) => setTimeout(r, delay))
+            continue
+          }
+          return null
+        }
+
+        if (!response.ok) return null
+        return (await response.json()) as T
+      } catch {
+        if (attempt < retries) {
+          await new Promise((r) => setTimeout(r, 500 * (attempt + 1)))
+          continue
+        }
+        return null
+      }
+    }
+    return null
+  }
+
+  private pickTitle(media: AniListMedia): string {
+    return stripDiacritics(
+      media.title?.english || media.title?.romaji || media.title?.native || ''
+    )
+  }
+
+  private mediaToShow(media: AniListMedia): Show {
+    const name = this.pickTitle(media)
     return {
-      __ddg1_: '5H0114JE1p0wQHdJiV2O',
-      __ddg2_: 'FxnuwLkvPnXSQtPE',
-      __ddg8_: 'j55RhixQcxVPfvqt',
-      __ddg9_: '51.158.195.12',
-      __ddg10_: '1769167572',
-      __ddgid_: 'ExAWs3AJTzpAKb8m',
-      __ddgmark_: 'slbgrX6Jj2jTxuo2',
-    }
-  }
-
-  private async fetchFreshCookies(): Promise<void> {
-    const ua =
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36'
-    try {
-      const resp = await fetch(this.base, {
-        method: 'GET',
-        headers: {
-          'User-Agent': ua,
-          Accept:
-            'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.9',
-        },
-        redirect: 'follow',
-      })
-
-      const setCookie = resp.headers.get('set-cookie')
-      if (setCookie) {
-        const parsed: Record<string, string> = {}
-        setCookie.split(/\n|,/).forEach((part) => {
-          const match = part.trim().match(/^([^=]+)=([^;]+)/)
-          if (match && match[1].startsWith('__ddg')) {
-            parsed[match[1]] = match[2]
-          }
-        })
-        if (Object.keys(parsed).length > 0) {
-          this.cachedCookies = parsed
-          return
-        }
-      }
-
-      const body = await resp.text()
-      const cookieMatch = body.match(/document\.cookie\s*=\s*"([^"]+)"/)
-      if (cookieMatch) {
-        const parsed: Record<string, string> = {}
-        cookieMatch[1].split(';').forEach((part) => {
-          const eq = part.trim().indexOf('=')
-          if (eq > 0) {
-            const key = part.trim().substring(0, eq)
-            const val = part.trim().substring(eq + 1)
-            if (key.startsWith('__ddg')) parsed[key] = val
-          }
-        })
-        if (Object.keys(parsed).length > 0) {
-          this.cachedCookies = parsed
-        }
-      }
-    } catch {
-      // homepage fetch failed, will rely on defaults
-    }
-  }
-
-  private async ensureCookies(): Promise<void> {
-    if (this.cachedCookies) return
-    if (this.cookieFetchInProgress) {
-      await this.cookieFetchInProgress
-      return
-    }
-    this.cookieFetchInProgress = this.fetchFreshCookies()
-    await this.cookieFetchInProgress
-    this.cookieFetchInProgress = null
-    if (!this.cachedCookies) {
-      this.cachedCookies = this.getDefaultCookies()
-    }
-  }
-
-  private async getHeaders(isApi: boolean = false): Promise<Record<string, string>> {
-    await this.ensureCookies()
-
-    const cookieString = Object.entries(this.cachedCookies || this.getDefaultCookies())
-      .map(([key, val]) => `${key}=${val}`)
-      .join('; ')
-
-    const headers: Record<string, string> = {
-      'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
-      Accept:
-        'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.9',
-      Referer: 'https://animepahe.pw/',
-      Origin: 'https://animepahe.pw',
-      Cookie: cookieString,
-    }
-
-    if (isApi) {
-      headers['X-Requested-With'] = 'XMLHttpRequest'
-      headers['Accept'] = 'application/json, text/javascript, */*; q=0.01'
-    }
-
-    return headers
-  }
-
-  private async get(url: string, isApi: boolean = false): Promise<string> {
-    try {
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: await this.getHeaders(isApi),
-      })
-
-      const text = await response.text()
-
-      if (!response.ok) {
-        if (response.status === 403 || text.includes('DDoS-Guard')) {
-          logger.error(
-            'DDoS-Guard blocked the request! Refreshing cookies and retrying...'
-          )
-          this.cachedCookies = null
-          const retryResp = await fetch(url, {
-            method: 'GET',
-            headers: await this.getHeaders(isApi),
-          })
-          const retryText = await retryResp.text()
-          if (!retryResp.ok) {
-            throw new Error(`HTTP ${retryResp.status}`)
-          }
-          return retryText
-        }
-        throw new Error(`HTTP ${response.status}`)
-      }
-
-      return text
-    } catch (error) {
-      const err = error as Error
-      logger.error({ url, err: err.message }, 'AnimePahe Fetch failed')
-      throw error
-    }
-  }
-
-  private async getJson(url: string): Promise<Record<string, unknown> | unknown[]> {
-    const data = await this.get(url, true)
-    try {
-      return JSON.parse(data)
-    } catch {
-      logger.error({ url }, 'Failed to parse JSON (likely blocked by bot protection)')
-      return {}
+      _id: media.id.toString(),
+      id: media.id.toString(),
+      name,
+      englishName: name,
+      nativeName: media.title?.native,
+      thumbnail: media.coverImage?.large,
+      type: media.format,
+      year: media.startDate?.year,
+      episodeCount: media.episodes,
+      description: media.description?.replace(/<[^>]*>/g, '') || '',
+      status: media.status,
+      genres: media.genres?.map((g) => ({ name: g })),
+      score: media.averageScore ? media.averageScore / 10 : undefined,
     }
   }
 
   async search(options: SearchOptions): Promise<Show[]> {
-    try {
-      const query = options.query || ''
-      const url = `${this.apiBase}?m=search&q=${encodeURIComponent(query)}`
-      const data = (await this.getJson(url)) as Record<string, unknown>
+    const query = options.query || ''
+    if (!query) return []
 
-      const animeRows = (data.data || data.results || data.items || []) as AnimePaheSearchResult[]
-      return animeRows.map((a) => ({
-        _id: a.session,
-        id: a.session,
-        name: a.title || a.name || '',
-        englishName: a.title,
-        thumbnail: a.poster || a.image,
-        type: a.type,
-        year: a.year,
-        session: a.session,
-      }))
-    } catch {
-      return []
-    }
+    const data = await this.anilistFetch<AniListPageResponse>(SEARCH_QUERY, {
+      search: query,
+      page: 1,
+      perPage: 14,
+    })
+
+    const media = data?.data?.Page?.media
+    if (!media || media.length === 0) return []
+
+    return media.map((m) => this.mediaToShow(m))
   }
 
-  async getEpisodes(showId: string): Promise<EpisodeDetails | null> {
-    try {
-      const firstPageUrl = `${this.apiBase}?m=release&id=${showId}&sort=episode_asc&page=1`
-      const firstPageData = (await this.getJson(firstPageUrl)) as Record<string, unknown>
+  async getEpisodes(showId: string, _mode: 'sub' | 'dub'): Promise<EpisodeDetails | null> {
+    const id = parseInt(showId)
+    if (isNaN(id)) return null
 
-      let episodes = (firstPageData.data || firstPageData.results || []) as AnimePaheEpisode[]
-      const lastPage = Number(firstPageData.last_page || firstPageData.lastPage || 1)
+    const cacheKey = `animepahe_eps_${showId}`
+    const cached = this.cache.get<EpisodeDetails>(cacheKey)
+    if (cached) return cached
 
-      for (let p = 2; p <= lastPage; p++) {
-        const pageUrl = `${this.apiBase}?m=release&id=${showId}&sort=episode_asc&page=${p}`
-        const pageData = (await this.getJson(pageUrl)) as Record<string, unknown>
-        episodes = episodes.concat((pageData.data || pageData.results || []) as AnimePaheEpisode[])
-      }
+    const data = await this.anilistFetch<AniListMediaResponse>(MEDIA_QUERY, { id })
+    const media = data?.data?.Media
+    if (!media) return null
 
-      const episodeMap: Record<string, string> = {}
-      const episodeNumbers: string[] = []
+    const count = media.episodes || 12
+    const episodes = Array.from({ length: count }, (_, i) => (i + 1).toString())
 
-      episodes.forEach((ep) => {
-        const epNum = (ep.episode ?? ep.number ?? '').toString()
-        if (epNum) {
-          episodeMap[epNum] = ep.session || ep.release_session || ''
-          episodeNumbers.push(epNum)
-        }
-      })
-
-      this.cache.set(`animepahe_epmap_${showId}`, episodeMap, 86400)
-
-      return {
-        episodes: episodeNumbers.sort((a, b) => Number(a) - Number(b)),
-        description: '',
-      }
-    } catch {
-      return null
-    }
-  }
-
-  private async getEpisodeSession(showId: string, episodeNumber: string): Promise<string | null> {
-    const cacheKey = `animepahe_epmap_${showId}`
-    let cachedMap = this.cache.get<Record<string, string>>(cacheKey)
-
-    if (!cachedMap) {
-      await this.getEpisodes(showId)
-      cachedMap = this.cache.get<Record<string, string>>(cacheKey)
+    const result: EpisodeDetails = {
+      episodes,
+      description: media.description?.replace(/<[^>]*>/g, '') || '',
     }
 
-    if (!cachedMap) return null
-
-    if (cachedMap[episodeNumber]) {
-      return cachedMap[episodeNumber]
-    }
-
-    const requestedNum = parseFloat(episodeNumber)
-    const keys = Object.keys(cachedMap)
-    for (const key of keys) {
-      if (parseFloat(key) === requestedNum) {
-        return cachedMap[key]
-      }
-    }
-
-    const sortedKeys = keys.sort((a, b) => Number(a) - Number(b))
-    const minEp = Number(sortedKeys[0])
-
-    if (requestedNum < minEp) {
-      const index = Math.floor(requestedNum) - 1
-      if (index >= 0 && index < sortedKeys.length) {
-        const actualEpNum = sortedKeys[index]
-        return cachedMap[actualEpNum]
-      }
-    }
-
-    return null
+    this.cache.set(cacheKey, result, 86400)
+    return result
   }
 
   async getStreamUrls(
@@ -299,136 +206,53 @@ export class AnimePaheProvider implements Provider {
     episodeNumber: string,
     mode: 'sub' | 'dub'
   ): Promise<VideoSource[] | null> {
-    try {
-      const epSession = await this.getEpisodeSession(showId, episodeNumber)
-      if (!epSession) return null
+    const id = parseInt(showId)
+    if (isNaN(id)) return null
 
-      const sources = await this.getSources(showId, epSession)
-      const videoSources: VideoSource[] = []
+    let targetEpisode = episodeNumber
+    if (episodeNumber === '0') targetEpisode = '1'
 
-      for (const src of sources) {
-        const audio = (src.audio || '').trim().toLowerCase()
-        const sourceMode =
-          audio.includes('eng') || audio.includes('dub')
-            ? 'dub'
-            : audio.includes('jpn') || audio.includes('jap') || audio.includes('sub')
-              ? 'sub'
-              : null
+    const streamUrl = `${VIDNEST_BASE}/animepahe/${showId}/${targetEpisode}/${mode}`
 
-        if (sourceMode !== mode) continue
-
-        const label = src.fansub
-          ? `${src.quality || 'Auto'} - ${src.fansub} (${sourceMode.toUpperCase()})`
-          : `${src.quality || 'Auto'} (${sourceMode.toUpperCase()})`
-
-        videoSources.push({
-          sourceName: label,
-          links: [
-            {
-              resolutionStr: src.quality || 'Auto',
-              link: `/api/embed-proxy?url=${encodeURIComponent(src.url)}`,
-              hls: false,
-            },
-          ],
-          type: 'iframe',
-          actualEpisodeNumber: episodeNumber,
-        })
-      }
-
-      return videoSources.length > 0 ? videoSources : null
-    } catch {
-      return null
-    }
-  }
-
-  private async getSources(
-    animeSession: string,
-    episodeSession: string
-  ): Promise<AnimePaheVideoSource[]> {
-    try {
-      const playUrl = `${this.base}/play/${animeSession}/${episodeSession}`
-      const html = await this.get(playUrl)
-      const $ = cheerio.load(html)
-
-      const sources: AnimePaheVideoSource[] = []
-
-      $('[data-src]').each((_, el) => {
-        const src = $(el).attr('data-src')?.trim()
-        if (!src || !/kwik/i.test(src)) return
-
-        const resolution = $(el).attr('data-resolution') || $(el).attr('data-res')
-        sources.push({
-          url: src,
-          quality: resolution ? (resolution.endsWith('p') ? resolution : `${resolution}p`) : null,
-          fansub: $(el).attr('data-fansub') ?? null,
-          audio: $(el).attr('data-audio') ?? null,
-        })
-      })
-
-      const unique = Array.from(new Map(sources.map((s) => [s.url, s])).values())
-      unique.sort((a, b) => {
-        const qa = a.quality ? parseInt(a.quality) || 0 : 0
-        const qb = b.quality ? parseInt(b.quality) || 0 : 0
-        return qb - qa
-      })
-
-      return unique
-    } catch {
-      return []
-    }
-  }
-
-  async resolveKwik(kwikUrl: string): Promise<{ m3u8: string; referer: string }> {
-    try {
-      const fetchUrl = kwikUrl.replace('/e/', '/f/')
-      const response = await fetch(fetchUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          Referer: 'https://animepahe.pw/',
-        },
-      })
-
-      const html = await response.text()
-
-      if (html.includes('Just a moment')) {
-        throw new Error('Kwik triggered a Cloudflare challenge.')
-      }
-
-      const directMatch = html.match(/(?:source|file)\s*:\s*['"]([^'"]+\.m3u8)['"]/)
-      if (directMatch) return { m3u8: directMatch[1], referer: kwikUrl }
-
-      const packedMatch = html.match(/'([^']{50,})'\.split\('\|'\)/)
-      if (packedMatch) {
-        const parts = packedMatch[1].split('|')
-        const hash = parts.find((p) => p.length === 64 && /^[a-f0-9]+$/.test(p))
-        const domain = parts.find((p) => p.includes('owocdn'))
-
-        if (hash) {
-          const cdn = domain || 'na.owocdn.top'
-          return { m3u8: `https://${cdn}/stream/01/${hash}/uwu.m3u8`, referer: kwikUrl }
-        }
-      }
-
-      throw new Error('Could not regex m3u8 link from Kwik HTML')
-    } catch (err) {
-      const error = err as Error
-      logger.error({ err: error.message }, 'Kwik Resolve failed')
-      return { m3u8: '', referer: kwikUrl }
-    }
+    return [
+      {
+        sourceName: `VidNest (${mode.toUpperCase()})`,
+        links: [
+          {
+            resolutionStr: 'Auto',
+            link: streamUrl,
+            hls: false,
+          },
+        ],
+        type: 'iframe',
+        actualEpisodeNumber: targetEpisode,
+      },
+    ]
   }
 
   async getShowMeta(showId: string): Promise<Partial<Show> | null> {
-    return null
+    const id = parseInt(showId)
+    if (isNaN(id)) return null
+
+    const data = await this.anilistFetch<AniListMediaResponse>(MEDIA_QUERY, { id })
+    const media = data?.data?.Media
+    if (!media) return null
+
+    return this.mediaToShow(media)
   }
+
   async getPopular(): Promise<Show[]> {
     return []
   }
+
   async getSchedule(): Promise<Show[]> {
     return []
   }
+
   async getSeasonal(): Promise<Show[]> {
     return []
   }
+
   async getLatestReleases(): Promise<Show[]> {
     return []
   }

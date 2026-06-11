@@ -268,7 +268,7 @@ class MegaPlayProvider {
         try {
             if (!/^\d+$/.test(showId))
                 return { status: '' };
-            const response = await fetch(`${this.jikanBase}/anime/${showId}`);
+            const response = await fetch(`${this.jikanBase}/anime/${showId}`, { headers: FETCH_HEADERS });
             const data = (await response.json());
             return { status: data.data?.status || '' };
         }

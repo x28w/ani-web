@@ -234,13 +234,23 @@ const Player: React.FC = () => {
       }
     }
 
+    const handleIframeMessage = (event: MessageEvent) => {
+      if (event.data?.type !== 'PLAYER_EVENT') return
+      const { event: eventType, currentTime, duration } = event.data.data || {}
+      if (eventType === 'timeupdate' && currentTime > 0 && duration > 0) {
+        recordEpisodeProgress(state.currentEpisode, currentTime, duration)
+      }
+    }
+
     document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('message', handleIframeMessage)
     return () => {
       window.clearInterval(intervalId)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('message', handleIframeMessage)
       recordVisibleWatchTime()
     }
-  }, [showId, state.currentEpisode, state.loadingVideo, state.selectedSource?.type])
+  }, [showId, state.currentEpisode, state.loadingVideo, state.selectedSource?.type, recordEpisodeProgress])
 
   const [skipIndicator, setSkipIndicator] = useState<{
     side: 'left' | 'right'
