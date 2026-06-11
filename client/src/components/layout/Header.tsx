@@ -81,7 +81,7 @@ const Header: React.FC = () => {
   const isGuest = user?.role === 'guest'
   const promptGuestSignIn = isGuest && !guestSignInDismissed
   const avatarSrc =
-    user?.profilePictureUrl && !profileImageFailed ? user.profilePictureUrl : '/guest-avatar.png'
+    user?.profilePictureUrl && !profileImageFailed ? user.profilePictureUrl : '/guest-avatar.svg'
   const loginState = { from: `${location.pathname}${location.search}` }
 
   return (

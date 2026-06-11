@@ -213,7 +213,7 @@ const Settings: React.FC = () => {
                     src={
                       user?.profilePictureUrl && !profileImageFailed
                         ? user.profilePictureUrl
-                        : '/guest-avatar.png'
+                        : '/guest-avatar.svg'
                     }
                     alt={user?.displayName || user?.username || 'Profile'}
                     onError={() => setProfileImageFailed(true)}
