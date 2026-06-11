@@ -6,3 +6,5 @@ client/dist/** text eol=lf
 server/dist/** text eol=lf
 client/dist/favicon.ico binary
 client/dist/logo.png binary
+client/dist/guest-avatar.png binary
+client/dist/login-logo.png binary
