@@ -1,0 +1,27 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createWatchlistRouter = createWatchlistRouter;
+const express_1 = require("express");
+const watchlist_controller_1 = require("../controllers/watchlist.controller");
+function createWatchlistRouter(provider) {
+    const router = (0, express_1.Router)();
+    const controller = new watchlist_controller_1.WatchlistController(provider);
+    router.get('/continue-watching', controller.getContinueWatching);
+    router.get('/continue-watching/fast', controller.getContinueWatchingFast);
+    router.get('/continue-watching/up-next', controller.getContinueWatchingUpNext);
+    router.get('/continue-watching/all', controller.getAllContinueWatching);
+    router.post('/continue-watching/remove', controller.removeContinueWatching);
+    router.post('/update-progress', controller.updateProgress);
+    router.post('/record-watch-time', controller.recordWatchTime);
+    router.get('/watchlist', controller.getWatchlist);
+    router.get('/watchlist/check/:showId', controller.checkWatchlist);
+    router.post('/watchlist/add', controller.addToWatchlist);
+    router.post('/watchlist/remove', controller.removeFromWatchlist);
+    router.post('/watchlist/status', controller.updateWatchlistStatus);
+    router.get('/episode-progress/:showId/:episodeNumber', controller.getEpisodeProgress);
+    router.get('/watched-episodes/:showId', controller.getWatchedEpisodes);
+    router.get('/notifications', controller.getNotifications);
+    router.post('/notifications/dismiss', controller.dismissNotification);
+    router.post('/notifications/clear-all', controller.clearAllNotifications);
+    return router;
+}

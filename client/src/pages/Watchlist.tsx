@@ -1,0 +1,696 @@
+import React, { useState, useMemo, useEffect, useRef } from 'react'
+import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import toast from 'react-hot-toast'
+import {
+  FaChevronDown,
+  FaChevronUp,
+  FaFilter,
+  FaPlay,
+  FaSearch,
+  FaTrash,
+  FaChevronLeft,
+  FaChevronRight,
+} from 'react-icons/fa'
+
+import AnimeCard from '../components/anime/AnimeCard'
+import SkeletonGrid from '../components/common/SkeletonGrid'
+import ErrorMessage from '../components/common/ErrorMessage'
+import RemoveConfirmationModal from '../components/common/RemoveConfirmationModal'
+import { resolveShowId } from '../lib/showId'
+import { Button } from '../components/common/Button'
+import SearchableSelect from '../components/common/SearchableSelect'
+
+import {
+  usePaginatedWatchlist,
+  useRemoveFromWatchlist,
+  usePaginatedAllContinueWatching,
+  useContinueWatchingFast,
+  useGenresAndStudios,
+} from '../hooks/useAnimeData'
+import { useSetting, useUpdateSetting } from '../hooks/useSettings'
+import { useLowEndMode } from '../contexts/LowEndModeContext'
+import { useTitlePreference } from '../contexts/TitlePreferenceContext'
+import { fixThumbnailUrl } from '../lib/utils'
+import styles from './Watchlist.module.css'
+
+const PRIMARY_FILTERS = ['All', 'Watching', 'Planned', 'Completed']
+const SECONDARY_FILTERS = ['Continue Watching', 'On-Hold', 'Dropped']
+const STATUS_OPTIONS = ['Watching', 'Completed', 'On-Hold', 'Dropped', 'Planned']
+
+interface Option {
+  value: string
+  label: string
+}
+
+const typeOptions: Option[] = [
+  { value: 'ALL', label: 'All Types' },
+  { value: 'TV', label: 'TV Series' },
+  { value: 'Movie', label: 'Movie' },
+  { value: 'OVA', label: 'OVA' },
+  { value: 'ONA', label: 'ONA' },
+]
+
+const seasonOptions: Option[] = [
+  { value: 'ALL', label: 'All Seasons' },
+  { value: 'Winter', label: 'Winter' },
+  { value: 'Spring', label: 'Spring' },
+  { value: 'Summer', label: 'Summer' },
+  { value: 'Fall', label: 'Fall' },
+]
+
+const countryOptions: Option[] = [
+  { value: 'ALL', label: 'All Countries' },
+  { value: 'JP', label: 'Japan' },
+  { value: 'CN', label: 'China' },
+]
+
+const languageOptions: Option[] = [
+  { value: 'ALL', label: 'All Languages' },
+  { value: 'sub', label: 'Subbed' },
+  { value: 'dub', label: 'Dubbed' },
+]
+
+const getGenreStateFromParams = (params: URLSearchParams) => {
+  const states: { [key: string]: 'include' | 'exclude' } = {}
+  params
+    .get('genres')
+    ?.split(',')
+    .filter(Boolean)
+    .forEach((genre) => {
+      states[genre] = 'include'
+    })
+  params
+    .get('excludeGenres')
+    ?.split(',')
+    .filter(Boolean)
+    .forEach((genre) => {
+      states[genre] = 'exclude'
+    })
+  return states
+}
+
+const Watchlist: React.FC = () => {
+  const { filter: filterBy = 'All' } = useParams<{ filter: string }>()
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const queryClient = useQueryClient()
+  const [page, setPage] = useState(parseInt(searchParams.get('page') || '1'))
+  const [sortBy, setSortBy] = useState(searchParams.get('sortBy') || 'last_added')
+  const [query, setQuery] = useState(searchParams.get('query') || '')
+  const [type, setType] = useState(searchParams.get('type') || 'ALL')
+  const [season, setSeason] = useState(searchParams.get('season') || 'ALL')
+  const [year, setYear] = useState(searchParams.get('year') || 'ALL')
+  const [country, setCountry] = useState(searchParams.get('country') || 'ALL')
+  const [language, setLanguage] = useState(searchParams.get('translation') || 'ALL')
+  const [studio, setStudio] = useState(searchParams.get('studios') || 'ALL')
+  const [tag, setTag] = useState(searchParams.get('tags') || 'ALL')
+  const [genreStates, setGenreStates] = useState<{ [key: string]: 'include' | 'exclude' }>(() =>
+    getGenreStateFromParams(searchParams)
+  )
+  const [showFilters, setShowFilters] = useState(() => {
+    return ['type', 'season', 'year', 'country', 'translation', 'studios', 'tags', 'genres'].some(
+      (key) => searchParams.has(key)
+    )
+  })
+  const { lowEndMode } = useLowEndMode()
+  const { titlePreference } = useTitlePreference()
+  const { data: metaData } = useGenresAndStudios()
+  const { data: resumeItems } = useContinueWatchingFast(4)
+  const availableGenres = metaData?.genres || []
+  const availableStudios = metaData?.studios || []
+  const availableTags = metaData?.tags || []
+  const gridRef = useRef<HTMLDivElement>(null)
+
+  const [itemToRemove, setItemToRemove] = useState<{ id: string; name: string } | null>(null)
+
+  const isCW = filterBy === 'Continue Watching'
+  const watchlistQueryString = useMemo(() => {
+    const params = new URLSearchParams(searchParams)
+    params.delete('page')
+    params.set('titlePreference', titlePreference)
+    return params.toString()
+  }, [searchParams, titlePreference])
+
+  const {
+    data: cwData,
+    isLoading: loadingCW,
+    error: errorCW,
+  } = usePaginatedAllContinueWatching(watchlistQueryString, page, 14)
+
+  const {
+    data: wlData,
+    isLoading: loadingWL,
+    error: errorWL,
+  } = usePaginatedWatchlist(filterBy, watchlistQueryString, page, 14)
+
+  const { data: nextCwData } = usePaginatedAllContinueWatching(watchlistQueryString, page + 1, 14)
+  const { data: nextWlData } = usePaginatedWatchlist(filterBy, watchlistQueryString, page + 1, 14)
+
+  const list = useMemo(() => (isCW ? cwData?.data : wlData?.data) || [], [isCW, cwData, wlData])
+  const total = useMemo(() => (isCW ? cwData?.total : wlData?.total) || 0, [isCW, cwData, wlData])
+  const isLoading = isCW ? loadingCW : loadingWL
+  const error = isCW ? errorCW : errorWL
+  const nextPageData = isCW ? nextCwData : nextWlData
+  const activeFilterCount =
+    [type, season, year, country, language, studio, tag].filter((value) => value !== 'ALL').length +
+    Object.keys(genreStates).length
+  const currentSecondaryFilter = SECONDARY_FILTERS.includes(filterBy) ? filterBy : ''
+
+  useEffect(() => {
+    setQuery(searchParams.get('query') || '')
+    setSortBy(searchParams.get('sortBy') || 'last_added')
+    setType(searchParams.get('type') || 'ALL')
+    setSeason(searchParams.get('season') || 'ALL')
+    setYear(searchParams.get('year') || 'ALL')
+    setCountry(searchParams.get('country') || 'ALL')
+    setLanguage(searchParams.get('translation') || 'ALL')
+    setStudio(searchParams.get('studios') || 'ALL')
+    setTag(searchParams.get('tags') || 'ALL')
+    setGenreStates(getGenreStateFromParams(searchParams))
+    setPage(parseInt(searchParams.get('page') || '1'))
+  }, [searchParams])
+
+  const updateStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      await fetch('/api/watchlist/status', {
+        method: 'POST',
+        body: JSON.stringify({ id, status }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['watchlist'] })
+      toast.success('Status updated')
+    },
+  })
+
+  const removeCw = useMutation({
+    mutationFn: async (showId: string) => {
+      await fetch('/api/continue-watching/remove', {
+        method: 'POST',
+        body: JSON.stringify({ showId }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['allContinueWatching'] }),
+  })
+
+  const removeWl = useRemoveFromWatchlist()
+  const { data: skipConfirm } = useSetting('skipRemoveConfirmation')
+  const updateSetting = useUpdateSetting()
+
+  const sortedList = useMemo(() => {
+    const getSortTitle = (item: (typeof list)[number]) =>
+      (item[titlePreference as keyof typeof item] as string) || item.name || ''
+
+    return [...list].sort((a, b) => {
+      if (sortBy === 'name_asc') return getSortTitle(a).localeCompare(getSortTitle(b))
+      if (sortBy === 'name_desc') return getSortTitle(b).localeCompare(getSortTitle(a))
+      return 0
+    })
+  }, [list, sortBy, titlePreference])
+
+  const currentYear = new Date().getFullYear()
+  const yearOptions: Option[] = [
+    { value: 'ALL', label: 'All Years' },
+    ...Array.from({ length: currentYear - 1980 + 1 }, (_, i) => ({
+      value: String(currentYear - i),
+      label: String(currentYear - i),
+    })),
+  ]
+
+  const studioOptions: Option[] = [
+    { value: 'ALL', label: 'All Studios' },
+    ...availableStudios.map((s) => ({ value: s, label: s })),
+  ]
+
+  const tagOptions: Option[] = [
+    { value: 'ALL', label: 'All Tags' },
+    ...availableTags.map((t) => ({ value: t, label: t })),
+  ]
+
+  const applyFilters = (nextSortBy = sortBy, newPage = 1) => {
+    const params = new URLSearchParams()
+    if (query.trim()) params.set('query', query.trim())
+    if (nextSortBy !== 'last_added') params.set('sortBy', nextSortBy)
+    if (type !== 'ALL') params.set('type', type)
+    if (season !== 'ALL') params.set('season', season)
+    if (year !== 'ALL') params.set('year', year)
+    if (country !== 'ALL') params.set('country', country)
+    if (language !== 'ALL') params.set('translation', language)
+    if (studio !== 'ALL') params.set('studios', studio)
+    if (tag !== 'ALL') params.set('tags', tag)
+
+    const genres = Object.entries(genreStates)
+      .filter(([, state]) => state === 'include')
+      .map(([genre]) => genre)
+    const excludeGenres = Object.entries(genreStates)
+      .filter(([, state]) => state === 'exclude')
+      .map(([genre]) => genre)
+
+    if (genres.length > 0) params.set('genres', genres.join(','))
+    if (excludeGenres.length > 0) params.set('excludeGenres', excludeGenres.join(','))
+
+    if (newPage > 1) params.set('page', newPage.toString())
+
+    setSearchParams(params)
+    if (newPage !== page) {
+      setPage(newPage)
+    }
+  }
+
+  const handlePageChange = (newPage: number) => {
+    applyFilters(sortBy, newPage)
+    if (gridRef.current) {
+      const y = gridRef.current.getBoundingClientRect().top + window.scrollY - 100
+      window.scrollTo({ top: y, behavior: 'smooth' })
+    }
+  }
+
+  const resetFilters = () => {
+    setQuery('')
+    setSortBy('last_added')
+    setType('ALL')
+    setSeason('ALL')
+    setYear('ALL')
+    setCountry('ALL')
+    setLanguage('ALL')
+    setStudio('ALL')
+    setTag('ALL')
+    setGenreStates({})
+    setSearchParams(new URLSearchParams())
+    setPage(1)
+  }
+
+  const toggleGenre = (genre: string) => {
+    setGenreStates((prev) => {
+      const current = prev[genre]
+      const next = current === 'include' ? 'exclude' : current === 'exclude' ? undefined : 'include'
+      const newState = { ...prev }
+      if (next) newState[genre] = next
+      else delete newState[genre]
+      return newState
+    })
+  }
+
+  const handleRemove = (id: string, name: string) => {
+    if (isCW) {
+      setItemToRemove({ id, name })
+      return
+    }
+
+    const shouldSkip = String(skipConfirm) === 'true' || String(skipConfirm) === '1'
+    if (shouldSkip) {
+      removeWl.mutate(id)
+    } else {
+      setItemToRemove({ id, name })
+    }
+  }
+
+  const confirmRemove = (opts: { removeFromWatchlist?: boolean; rememberPreference?: boolean }) => {
+    if (!itemToRemove) return
+    if (isCW) {
+      removeCw.mutate(itemToRemove.id)
+      if (opts.removeFromWatchlist) {
+        removeWl.mutate(itemToRemove.id)
+      }
+    } else {
+      removeWl.mutate(itemToRemove.id)
+    }
+    if (opts.rememberPreference)
+      updateSetting.mutate({ key: 'skipRemoveConfirmation', value: true })
+    setItemToRemove(null)
+  }
+
+  const handleStatusChange = (id: string, status: string) => {
+    updateStatus.mutate({ id, status })
+  }
+
+  const canGoNext = list.length >= 14 && nextPageData && nextPageData.data.length > 0
+
+  return (
+    <div className="page-container">
+      <header className={styles.header}>
+        <div>
+          <h2 className={styles.title}>My Watchlist</h2>
+          <p className={styles.subtitle}>Your collection, progress, and plans in one place</p>
+        </div>
+        <div className={styles.collectionSummary}>
+          <strong>{total}</strong>
+          <span>
+            {isCW ? 'titles in progress' : filterBy === 'All' ? 'saved titles' : filterBy}
+          </span>
+        </div>
+      </header>
+
+      {!isCW && resumeItems && resumeItems.length > 0 && (
+        <section className={styles.resumeSection} aria-label="Resume watching">
+          <div className={styles.resumeHeader}>
+            <h3>Resume Watching</h3>
+            <button
+              className={styles.viewAllButton}
+              onClick={() => navigate('/watchlist/Continue Watching')}
+            >
+              View all
+            </button>
+          </div>
+          <div className={styles.resumeGrid}>
+            {resumeItems.slice(0, 4).map((item) => {
+              const episode = item.episodeNumber ?? item.nextEpisodeToWatch
+              const displayTitle =
+                (item[titlePreference as keyof typeof item] as string) || item.name
+              const progress =
+                item.duration && item.currentTime
+                  ? Math.min((item.currentTime / item.duration) * 100, 100)
+                  : 0
+              const target = episode
+                ? `/watch/${item._id || item.id}/${episode}`
+                : `/watch/${item._id || item.id}`
+
+              return (
+                <Link className={styles.resumeCard} to={target} key={item.id || item._id}>
+                  <img src={fixThumbnailUrl(item.thumbnail, 96, 136)} alt="" loading="lazy" />
+                  <div className={styles.resumeInfo}>
+                    <h4>{displayTitle}</h4>
+                    <span>{episode ? `Episode ${episode}` : 'Continue watching'}</span>
+                    <div className={styles.resumeProgress} aria-hidden="true">
+                      <div style={{ width: `${progress}%` }} />
+                    </div>
+                  </div>
+                  <span className={styles.resumePlay} aria-hidden="true">
+                    <FaPlay />
+                  </span>
+                </Link>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      <div className={styles.toolbar}>
+        <div className={styles.filters} aria-label="Watchlist status">
+          {PRIMARY_FILTERS.map((filter) => (
+            <button
+              key={filter}
+              className={`${styles.filterBtn} ${filterBy === filter ? styles.active : ''}`}
+              onClick={() =>
+                navigate({ pathname: `/watchlist/${filter}`, search: searchParams.toString() })
+              }
+            >
+              {filter}
+            </button>
+          ))}
+          <select
+            className={`${styles.moreSelect} ${currentSecondaryFilter ? styles.secondaryActive : ''}`}
+            value={currentSecondaryFilter}
+            aria-label="More watchlist categories"
+            onChange={(event) => {
+              if (event.currentTarget.value) {
+                navigate({
+                  pathname: `/watchlist/${event.currentTarget.value}`,
+                  search: searchParams.toString(),
+                })
+              }
+            }}
+          >
+            <option value="">More</option>
+            {SECONDARY_FILTERS.map((filter) => (
+              <option value={filter} key={filter}>
+                {filter}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className={styles.toolbarActions}>
+          <div className={styles.inputIconWrapper}>
+            <FaSearch className={styles.searchIcon} />
+            <input
+              className={styles.searchInput}
+              aria-label="Search your watchlist by title"
+              placeholder="Search your watchlist by title..."
+              value={query}
+              onInput={(e) => setQuery(e.currentTarget.value)}
+              onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
+            />
+            <button
+              className={styles.submitSearch}
+              onClick={() => applyFilters()}
+              aria-label="Search watchlist"
+            >
+              <FaSearch />
+            </button>
+          </div>
+          <select
+            className={styles.sortSelect}
+            aria-label="Sort watchlist"
+            value={sortBy}
+            onChange={(e) => {
+              const nextSortBy = e.currentTarget.value
+              setSortBy(nextSortBy)
+              applyFilters(nextSortBy, page)
+            }}
+          >
+            <option value="last_added">Recently Added</option>
+            <option value="name_asc">Name (A-Z)</option>
+            <option value="name_desc">Name (Z-A)</option>
+          </select>
+          <button
+            className={`${styles.filterToggleBtn} ${showFilters ? styles.active : ''}`}
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <FaFilter size={14} />
+            <span>Filters</span>
+            {activeFilterCount > 0 && (
+              <span className={styles.filterCount}>{activeFilterCount}</span>
+            )}
+            {showFilters ? <FaChevronUp size={12} /> : <FaChevronDown size={12} />}
+          </button>
+        </div>
+      </div>
+
+      {showFilters && (
+        <div className={styles.filterContainer}>
+          <div className={`${styles.advancedFilters} ${styles.show}`}>
+            <div className={styles.filterGrid}>
+              <div className={styles.filterItem}>
+                <label>Type</label>
+                <select value={type} onChange={(e) => setType(e.currentTarget.value)}>
+                  {typeOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className={styles.filterItem}>
+                <label>Season</label>
+                <select value={season} onChange={(e) => setSeason(e.currentTarget.value)}>
+                  {seasonOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className={styles.filterItem}>
+                <label>Year</label>
+                <select value={year} onChange={(e) => setYear(e.currentTarget.value)}>
+                  {yearOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className={styles.filterItem}>
+                <label>Country</label>
+                <select value={country} onChange={(e) => setCountry(e.currentTarget.value)}>
+                  {countryOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className={styles.filterItem}>
+                <label>Language</label>
+                <select value={language} onChange={(e) => setLanguage(e.currentTarget.value)}>
+                  {languageOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {studioOptions.length > 1 && (
+                <div className={styles.filterItem}>
+                  <label>Studio</label>
+                  <SearchableSelect
+                    options={studioOptions}
+                    value={studio}
+                    onChange={setStudio}
+                    placeholder="All Studios"
+                  />
+                </div>
+              )}
+              {tagOptions.length > 1 && (
+                <div className={styles.filterItem}>
+                  <label>Tag</label>
+                  <SearchableSelect
+                    options={tagOptions}
+                    value={tag}
+                    onChange={setTag}
+                    placeholder="All Tags"
+                  />
+                </div>
+              )}
+            </div>
+
+            {availableGenres.length > 0 && (
+              <div className={styles.genreSection}>
+                <label className={styles.genreLabel}>Genres</label>
+                <div className={styles.genreContainer}>
+                  {availableGenres.map((genre) => (
+                    <button
+                      key={genre}
+                      className={`${styles.genreButton} ${styles[genreStates[genre] || '']}`}
+                      onClick={() => toggleGenre(genre)}
+                    >
+                      {genre}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className={styles.filterActions}>
+              <Button variant="secondary" onClick={resetFilters}>
+                Reset All
+              </Button>
+              <Button onClick={() => applyFilters()} className={styles.applyBtn}>
+                Apply Filters
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className={styles.resultsHeader} ref={gridRef}>
+        <h3 className={styles.resultsTitle}>
+          {isCW ? 'Continue Watching' : filterBy}
+          <span className={styles.itemCount}>({total} items)</span>
+        </h3>
+
+        {total > 0 && (
+          <div className={styles.pagination}>
+            <button
+              className={styles.pageBtn}
+              onClick={() => handlePageChange(page - 1)}
+              disabled={page === 1 || isLoading}
+            >
+              <FaChevronLeft size={14} />
+            </button>
+            <span className={styles.pageInfo}>
+              Page <strong>{page}</strong>
+            </span>
+            <button
+              className={styles.pageBtn}
+              onClick={() => handlePageChange(page + 1)}
+              disabled={!canGoNext || isLoading}
+            >
+              <FaChevronRight size={14} />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {isLoading ? (
+        <SkeletonGrid />
+      ) : error ? (
+        <ErrorMessage message={error.message} />
+      ) : (
+        <div className={`${styles.grid} ${lowEndMode ? styles.lowEnd : ''}`}>
+          {sortedList.map((item) => (
+            <div key={item._id} className={styles.itemWrapper}>
+              <AnimeCard
+                anime={item}
+                continueWatching={isCW}
+                onRemove={() => handleRemove(resolveShowId(item), item.name)}
+                layout="vertical"
+              />
+              {!isCW && (
+                <div className={styles.cardActions}>
+                  <select
+                    className={styles.statusSelect}
+                    aria-label={`Change status for ${item.name}`}
+                    value={item.status}
+                    onChange={(e) =>
+                      updateStatus.mutate({ id: resolveShowId(item), status: e.currentTarget.value })
+                    }
+                  >
+                    {STATUS_OPTIONS.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    className={styles.removeBtn}
+                    onClick={() => handleRemove(resolveShowId(item), item.name)}
+                    title="Remove from Watchlist"
+                  >
+                    <FaTrash size={12} />
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!isLoading && sortedList.length === 0 && (
+        <div className={styles.emptyState}>
+          <p>No anime found in this list.</p>
+        </div>
+      )}
+
+      {total > 0 && (
+        <div className={styles.bottomPagination}>
+          <div className={styles.pagination}>
+            <button
+              className={styles.pageBtn}
+              onClick={() => handlePageChange(page - 1)}
+              disabled={page === 1 || isLoading}
+            >
+              <FaChevronLeft size={14} />
+              <span>Previous</span>
+            </button>
+            <span className={styles.pageInfo}>
+              Page <strong>{page}</strong>
+            </span>
+            <button
+              className={styles.pageBtn}
+              onClick={() => handlePageChange(page + 1)}
+              disabled={!canGoNext || isLoading}
+            >
+              <span>Next</span>
+              <FaChevronRight size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <RemoveConfirmationModal
+        isOpen={!!itemToRemove}
+        onClose={() => setItemToRemove(null)}
+        onConfirm={confirmRemove}
+        animeName={itemToRemove?.name || ''}
+        scenario={isCW ? 'continueWatching' : 'watchlist'}
+      />
+    </div>
+  )
+}
+
+export default Watchlist

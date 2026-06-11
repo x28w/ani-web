@@ -1,0 +1,328 @@
+import React, { memo, useState, useCallback } from 'react'
+import { Link } from 'react-router-dom'
+import { FaMicrophone, FaClosedCaptioning, FaTimes, FaInfo, FaPlay, FaStar } from 'react-icons/fa'
+import AnimePopup from './AnimePopup'
+
+import { fixThumbnailUrl, formatTime } from '../../lib/utils'
+import { resolveShowId } from '../../lib/showId'
+import { useTitlePreference } from '../../contexts/TitlePreferenceContext'
+import styles from './AnimeCard.module.css'
+import useIsMobile from '../../hooks/useIsMobile'
+import { useLowEndMode } from '../../contexts/LowEndModeContext'
+
+interface Anime {
+  _id: string
+  id: string
+  name: string
+  nativeName?: string
+  englishName?: string
+  thumbnail: string
+  type?: string
+  episodeNumber?: number
+  currentTime?: number
+  duration?: number
+  showId?: string
+  nextEpisodeToWatch?: string
+  newEpisodesCount?: number
+  watchedCount?: number
+  episodeCount?: number
+  availableEpisodesDetail?: {
+    sub?: string[]
+    dub?: string[]
+  }
+  isAdult?: boolean
+  rating?: string
+  score?: number
+}
+
+interface AnimeCardConfig {
+  elements?: {
+    poster?: {
+      typeBadge?: boolean
+      episodeBadge?: boolean
+      removeButton?: boolean
+      adultBadge?: boolean
+    }
+    info?: {
+      title?: boolean
+      mobileBadges?: boolean
+      progress?: boolean
+      meta?: boolean
+    }
+  }
+}
+
+const defaultConfig: AnimeCardConfig = {
+  elements: {
+    poster: {
+      typeBadge: true,
+      episodeBadge: true,
+      adultBadge: true,
+    },
+    info: {
+      title: true,
+      mobileBadges: true,
+      progress: true,
+      meta: true,
+    },
+  },
+}
+
+interface AnimeCardProps {
+  anime: Anime
+  continueWatching?: boolean
+  onRemove?: (id: string) => void
+  isLCP?: boolean
+  config?: AnimeCardConfig
+  layout?: 'vertical' | 'horizontal'
+}
+
+const AnimeCard: React.FC<AnimeCardProps> = memo(
+  ({ anime, continueWatching = false, onRemove, isLCP = false, config, layout = 'vertical' }) => {
+    const isMobile = useIsMobile()
+    const { titlePreference } = useTitlePreference()
+    const { lowEndMode } = useLowEndMode()
+    const [isLoaded, setIsLoaded] = useState(false)
+    const [isHovered, setIsHovered] = useState(false)
+    const [isPopupVisible, setIsPopupVisible] = useState(false)
+    const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null)
+    const timeoutRef = React.useRef<NodeJS.Timeout | null>(null)
+
+    const handleInfoMouseEnter = (e: React.MouseEvent) => {
+      if (isMobile) return
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+      setAnchorRect(rect)
+      setIsPopupVisible(true)
+    }
+
+    const handleInfoMouseLeave = () => {
+      timeoutRef.current = setTimeout(() => {
+        setIsPopupVisible(false)
+      }, 300)
+    }
+
+    const handlePopupMouseEnter = () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    }
+
+    const handlePopupMouseLeave = () => {
+      setIsPopupVisible(false)
+    }
+
+    const mergedConfig = {
+      ...defaultConfig,
+      ...config,
+      elements: {
+        ...defaultConfig.elements,
+        ...(config?.elements || {}),
+        poster: {
+          ...defaultConfig.elements?.poster,
+          ...(config?.elements?.poster || {}),
+        },
+        info: {
+          ...defaultConfig.elements?.info,
+          ...(config?.elements?.info || {}),
+        },
+      },
+    }
+
+    const hasNewEpisodes = (anime.newEpisodesCount || 0) > 0
+    const hasProgress = (anime.currentTime || 0) > 0 && (anime.duration || 0) > 0
+
+    const displayTitle = anime[titlePreference] || anime.name
+
+    const progressRatio = (anime.currentTime || 0) / (anime.duration || 1)
+
+    const episodeToPlay = anime.episodeNumber ?? anime.nextEpisodeToWatch
+
+    const linkTarget = continueWatching
+      ? episodeToPlay
+        ? `/watch/${anime._id}/${episodeToPlay}`
+        : `/watch/${anime._id}`
+      : episodeToPlay && anime.episodeNumber
+        ? `/watch/${anime._id}/${anime.episodeNumber}`
+        : hasProgress
+          ? `/watch/${anime._id}/${anime.episodeNumber}`
+          : `/anime/${anime._id}`
+
+    const progressPercent = hasProgress
+      ? ((anime.currentTime || 0) / (anime.duration || 1)) * 100
+      : 0
+
+    const handleRemoveClick = useCallback(
+      (e: React.MouseEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        const id = resolveShowId(anime)
+        if (onRemove && id) onRemove(id)
+      },
+      [onRemove, anime]
+    )
+
+    const displayEpisodeCount = (() => {
+      const epCount = anime.episodeCount ?? 0
+      const watched = anime.watchedCount ?? 0
+      if (epCount && epCount >= watched) return epCount
+      if (watched > 0) return watched
+      return epCount || undefined
+    })()
+
+    const progressString = (() => {
+      if (continueWatching && episodeToPlay) {
+        return displayEpisodeCount
+          ? `EP ${episodeToPlay} / ${displayEpisodeCount}`
+          : `EP ${episodeToPlay}`
+      }
+
+      if (anime.watchedCount !== undefined && (displayEpisodeCount || anime.watchedCount)) {
+        return `EP ${anime.watchedCount} / ${displayEpisodeCount ?? anime.watchedCount}`
+      }
+
+      return null
+    })()
+
+    const posterEls = mergedConfig.elements?.poster
+    const infoEls = mergedConfig.elements?.info
+    const showTypeBadge = posterEls?.typeBadge ?? (continueWatching ? false : true)
+    const showEpBadge = posterEls?.episodeBadge ?? true
+    const showRemoveBtn =
+      posterEls?.removeButton === undefined
+        ? continueWatching && !!onRemove
+        : posterEls.removeButton
+    const showAdultBadge = posterEls?.adultBadge ?? true
+    const showMobileBadges = infoEls?.mobileBadges ?? true
+    const showProgress = infoEls?.progress ?? true
+    const showMeta = infoEls?.meta ?? true
+
+    const adultContent =
+      anime.isAdult ||
+      anime.rating === 'R+' ||
+      anime.rating === 'Rx' ||
+      anime.rating?.includes('17+')
+
+    return (
+      <div
+        className={`${styles.cardWrapper} ${lowEndMode ? styles.lowEnd : ''}`}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        <Link to={linkTarget} className={`${styles.card} ${styles[layout]}`}>
+          <div className={styles.posterContainer}>
+            <img
+              src={fixThumbnailUrl(anime.thumbnail, lowEndMode ? 100 : 150, lowEndMode ? 150 : 200)}
+              alt={displayTitle}
+              width={lowEndMode ? '100' : '150'}
+              height={lowEndMode ? '150' : '200'}
+              className={`${styles.posterImg} ${isLoaded ? styles.loaded : ''}`}
+              loading="lazy"
+              decoding="async"
+              onLoad={() => setIsLoaded(true)}
+            />
+
+            {!lowEndMode && !isMobile && (
+              <div className={styles.playOverlay} aria-hidden>
+                <FaPlay />
+              </div>
+            )}
+
+            {!isMobile && (
+              <>
+                {showTypeBadge && <div className={styles.typeBadge}>{anime.type || 'TV'}</div>}
+
+                {anime.score != null && anime.score > 0 && (
+                  <div className={styles.scoreBadge}>
+                    <FaStar aria-hidden />
+                    {typeof anime.score === 'number' ? anime.score.toFixed(1) : anime.score}
+                  </div>
+                )}
+
+                {hasNewEpisodes && (
+                  <div className={styles.newBadge}>NEW</div>
+                )}
+
+                {showEpBadge && progressString && (
+                  <div className={styles.epBadge}>{progressString}</div>
+                )}
+              </>
+            )}
+
+            {showAdultBadge && adultContent && !lowEndMode && (
+              <div className={styles.adultBadge}>18+</div>
+            )}
+          </div>
+
+          <div className={styles.info}>
+            {infoEls?.title !== false && (
+              <div className={styles.title} title={displayTitle}>
+                {displayTitle}
+              </div>
+            )}
+
+            {isMobile && showMobileBadges && (
+              <div className={styles.mobileBadges}>
+                <span className={styles.mobileType}>{anime.type || 'TV'}</span>
+                {progressString && <span className={styles.mobileEp}>{progressString}</span>}
+              </div>
+            )}
+
+            {showProgress && (continueWatching || lowEndMode) && hasProgress && (
+              <div>
+                <div className={styles.progressContainer}>
+                  <div className={styles.progressBar} style={{ width: `${progressPercent}%` }} />
+                </div>
+                {!lowEndMode && (
+                  <div className={styles.timestamp}>
+                    {formatTime(anime.currentTime || 0)} / {formatTime(anime.duration || 0)}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {showMeta && (
+              <div className={styles.metaRow}>
+                {anime.availableEpisodesDetail?.sub && (
+                  <div className={styles.metaItem}>
+                    <FaClosedCaptioning size={10} />
+                    {anime.availableEpisodesDetail.sub.length}
+                  </div>
+                )}
+                {anime.availableEpisodesDetail?.dub && (
+                  <div className={styles.metaItem}>
+                    <FaMicrophone size={10} />
+                    {anime.availableEpisodesDetail.dub.length}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </Link>
+        {showRemoveBtn && (
+          <button className={styles.removeBtn} onClick={handleRemoveClick} aria-label="Remove">
+            <FaTimes size={10} />
+          </button>
+        )}
+        {!continueWatching && !isMobile && (
+          <button
+            className={styles.infoBtn}
+            onMouseEnter={handleInfoMouseEnter}
+            onMouseLeave={handleInfoMouseLeave}
+            aria-label="Info"
+          >
+            <FaInfo size={10} />
+          </button>
+        )}
+        {isPopupVisible && anchorRect && (
+          <AnimePopup
+            showId={anime._id}
+            anchorRect={anchorRect}
+            onMouseEnter={handlePopupMouseEnter}
+            onMouseLeave={handlePopupMouseLeave}
+          />
+        )}
+      </div>
+    )
+  }
+)
+
+export default AnimeCard

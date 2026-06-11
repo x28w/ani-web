@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="ani-web is an anime streaming companion for discovering shows and tracking viewing progress."
+    />
+    <title>ani-web | Application Information</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0e0e12;
+        --panel: #17171d;
+        --border: #292a34;
+        --text: #f4f4f7;
+        --muted: #adb0bb;
+        --accent: #ab79ff;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+      }
+
+      main {
+        width: min(640px, 100%);
+        padding: clamp(24px, 6vw, 42px);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--panel);
+      }
+
+      h1 {
+        margin: 0 0 14px;
+        font-size: clamp(30px, 6vw, 42px);
+        letter-spacing: 0;
+      }
+
+      p {
+        margin: 0 0 18px;
+        color: var(--muted);
+      }
+
+      nav {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 28px;
+      }
+
+      a {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        padding: 0 18px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        color: var(--text);
+        text-decoration: none;
+      }
+
+      a.primary {
+        border-color: var(--accent);
+        background: var(--accent);
+        color: #ffffff;
+      }
+
+      a:hover,
+      a:focus-visible {
+        border-color: var(--accent);
+        outline: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>ani-web</h1>
+      <p>
+        ani-web is an anime streaming companion for discovering shows, watching episodes, and
+        tracking viewing progress.
+      </p>
+      <p>
+        Guests can use the app without a Google account. Optional account synchronization may use
+        Google Drive to save and restore ani-web data for the connected account.
+      </p>
+      <nav aria-label="Application links">
+        <a class="primary" href="/">Open ani-web</a>
+        <a href="/privacy.html">Privacy Policy</a>
+        <a href="/terms.html">Terms of Service</a>
+      </nav>
+    </main>
+  </body>
+</html>

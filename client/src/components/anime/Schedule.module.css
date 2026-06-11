@@ -1,0 +1,143 @@
+.scheduleSection {
+  margin-bottom: 2.5rem;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-6);
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  row-gap: var(--space-3);
+}
+
+.dayBtn {
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+  padding: var(--space-3) var(--space-2);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  min-width: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.2;
+  min-height: 56px;
+  font-weight: var(--font-weight-medium);
+}
+
+.dayBtn:hover {
+  background-color: var(--bg-elevated);
+  border-color: var(--accent);
+  color: var(--accent-light);
+  transform: translateY(-2px);
+}
+
+.dayBtn.active {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: white;
+  font-weight: var(--font-weight-bold);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.dayName {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+}
+
+.dayBtn.active .dayName {
+  color: white;
+}
+
+.dayDate {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.dayBtn.active .dayDate {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.daySelector {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-6);
+}
+
+.navArrows {
+  display: flex;
+  gap: 10px;
+}
+
+.navButton {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-secondary);
+  color: var(--text-primary);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.navButton:hover {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.carouselContainer {
+  position: relative;
+  width: 100%;
+}
+
+.carousel {
+  display: flex;
+  gap: 15px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  padding-bottom: 10px;
+}
+
+.carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.carouselCard {
+  flex: 0 0 calc((100% - (6 * 15px)) / 7);
+  min-width: 150px;
+}
+
+@media (max-width: 1200px) {
+  .carouselCard {
+    flex: 0 0 calc((100% - (5 * 15px)) / 6);
+  }
+}
+
+@media (max-width: 1024px) {
+  .carouselCard {
+    flex: 0 0 calc((100% - (4 * 15px)) / 5);
+  }
+}
+
+@media (max-width: 768px) {
+  .carouselCard {
+    flex: 0 0 calc((100% - (2 * 15px)) / 3);
+  }
+}
+
+@media (max-width: 480px) {
+  .carouselCard {
+    flex: 0 0 calc((100% - (1 * 15px)) / 2);
+  }
+}

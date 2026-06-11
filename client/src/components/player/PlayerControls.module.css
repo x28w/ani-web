@@ -1,0 +1,359 @@
+.controlsOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+  z-index: 50;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.controlsOverlay > * {
+  pointer-events: auto;
+}
+
+.controlsOverlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+  cursor: none;
+}
+
+/* ── Top corners ── */
+.topControls {
+  display: flex;
+  justify-content: space-between;
+  padding: 20px;
+}
+
+.topCornerBtn {
+  background: transparent;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.85;
+  transition: opacity 0.15s;
+}
+
+.topCornerBtn:hover {
+  opacity: 1;
+}
+
+/* ── Center play/pause ── */
+.centerPlayPause {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: white;
+  width: 56px;
+  height: 56px;
+  cursor: pointer;
+  opacity: 0.85;
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.centerPlayPause:hover {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1.05);
+}
+
+/* ── Bottom controls ── */
+.bottomControls {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: rgba(0,0,0,0.85);
+}
+
+/* ── Progress bar ── */
+.progressBarContainer {
+  width: 100%;
+  height: 20px;
+  cursor: pointer;
+  position: relative;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+}
+
+.progressBar {
+  width: 100%;
+  height: 4px;
+  background: #4d4d4d;
+  border-radius: 2px;
+  position: relative;
+  transition: height 0.1s;
+}
+
+.progressBarContainer:hover .progressBar,
+.progressBarContainer.scrubbing .progressBar {
+  height: 6px;
+}
+
+.watchedBar,
+.bufferedBar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: 2px;
+}
+
+.watchedBar {
+  background: #7c3aed;
+  z-index: 2;
+}
+
+.bufferedBar {
+  background: rgba(255,255,255,0.15);
+  z-index: 1;
+}
+
+.thumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  width: 12px;
+  height: 12px;
+  background: white;
+  border-radius: 50%;
+  z-index: 3;
+  transition: transform 0.1s;
+}
+
+.progressBarContainer:hover .thumb,
+.progressBarContainer.scrubbing .thumb {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.timeBubble {
+  position: absolute;
+  bottom: 26px;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.85);
+  color: white;
+  padding: 3px 7px;
+  border-radius: 2px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 0.1s;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.progressBarContainer:hover .timeBubble {
+  opacity: 1;
+}
+
+.skipSegment {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  z-index: 10;
+  opacity: 0.3;
+}
+
+.skipSegment.op { background: var(--color-success); }
+.skipSegment.ed { background: var(--accent-blue); }
+.skipSegment.recap { background: var(--color-warning); }
+
+/* ── Control bar ── */
+.controlBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 64px;
+  padding: 0 20px;
+  gap: 16px;
+}
+
+.controlLeft,
+.controlRight {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-shrink: 0;
+}
+
+.controlCenter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.showTitleText {
+  font-size: 15px;
+  font-weight: 700;
+  color: white;
+  white-space: nowrap;
+}
+
+.episodeText {
+  font-size: 14px;
+  font-weight: 400;
+  color: rgba(255,255,255,0.7);
+  white-space: nowrap;
+}
+
+.iconBtn {
+  background: transparent;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.85;
+  transition: opacity 0.1s;
+}
+
+.iconBtn:hover {
+  opacity: 1;
+}
+
+.iconBtn.active {
+  opacity: 1;
+  color: #7c3aed;
+}
+
+/* ── Volume ── */
+.volumeArea {
+  display: flex;
+  align-items: center;
+}
+
+.volumeSliderTrack {
+  width: 0;
+  overflow: hidden;
+  transition: width 0.2s;
+}
+
+.volumeArea:hover .volumeSliderTrack {
+  width: 60px;
+}
+
+.volumeSlider {
+  width: 60px;
+  height: 20px;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  margin: 0;
+}
+
+.volumeSlider::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 3px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 1.5px;
+}
+
+.volumeSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 11px;
+  width: 11px;
+  border-radius: 50%;
+  background: white;
+  margin-top: -4px;
+}
+
+.volumeSlider::-moz-range-track {
+  width: 100%;
+  height: 3px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 1.5px;
+}
+
+.volumeSlider::-moz-range-progress {
+  height: 3px;
+  background: var(--accent);
+  border-radius: 1.5px;
+}
+
+.volumeSlider::-moz-range-thumb {
+  height: 11px;
+  width: 11px;
+  border-radius: 50%;
+  background: white;
+  border: none;
+}
+
+/* ── Speed ── */
+.speedContainer {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.speedLabel {
+  position: absolute;
+  bottom: -4px;
+  right: -2px;
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: #7c3aed;
+  background: transparent;
+  pointer-events: none;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .controlBar {
+    height: 50px;
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .controlLeft,
+  .controlRight {
+    gap: 14px;
+  }
+
+  .controlCenter {
+    display: none;
+  }
+
+  .volumeSliderTrack {
+    display: none;
+  }
+
+  .topControls {
+    padding: 12px;
+  }
+
+  .centerPlayPause {
+    width: 44px;
+    height: 44px;
+  }
+
+  .progressBarContainer {
+    height: 16px;
+    padding: 0 8px;
+  }
+}
+
+:global(body.low-end) .bottomControls {
+  background: #000 !important;
+}

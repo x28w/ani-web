@@ -1,0 +1,156 @@
+.hub {
+  margin-bottom: var(--space-10);
+}
+
+.heroPanel {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-6);
+  align-items: center;
+  padding: var(--space-6);
+  margin-bottom: var(--space-6);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+  overflow: hidden;
+}
+
+.heroCopy h2 {
+  margin: 0 0 var(--space-3);
+  font-size: clamp(1.35rem, 3vw, 1.85rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.heroCopy p {
+  margin: 0 0 var(--space-5);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  max-width: 48ch;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.surprise {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  color: #fff;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  box-shadow: 0 8px 24px var(--accent-glow);
+}
+
+.latestLink {
+  color: var(--accent-light);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+}
+
+.heroPosters {
+  display: flex;
+  align-items: flex-end;
+  padding-right: var(--space-4);
+}
+
+.heroPosters img {
+  width: 88px;
+  height: 124px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--bg-secondary);
+  margin-left: calc(var(--stack-i, 0) * -28px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  transform: rotate(calc((var(--stack-i, 0) - 1.5) * 4deg));
+}
+
+.moodHeading {
+  margin: 0 0 var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+}
+
+.moodGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+.moodCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-primary);
+  background: linear-gradient(
+    145deg,
+    hsl(var(--mood-hue) / 0.12),
+    var(--surface-muted)
+  );
+  color: var(--text-primary);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    transform var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.moodCard:hover {
+  transform: translateY(-3px);
+  border-color: hsl(var(--mood-hue) / 0.5);
+}
+
+.moodIcon {
+  font-size: 1.25rem;
+  color: hsl(var(--mood-hue));
+}
+
+.quickLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--border-primary);
+}
+
+.quickLinks a {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+  text-decoration: none;
+}
+
+.quickLinks a:hover {
+  color: var(--accent-light);
+}
+
+@media (max-width: 768px) {
+  .heroPanel {
+    grid-template-columns: 1fr;
+    padding: var(--space-5);
+  }
+
+  .heroPosters {
+    justify-content: center;
+    padding: 0;
+  }
+}

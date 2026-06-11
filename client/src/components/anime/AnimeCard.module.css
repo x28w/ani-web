@@ -1,0 +1,387 @@
+.cardWrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition:
+    transform var(--transition-base),
+    z-index var(--transition-fast);
+  will-change: transform;
+  content-visibility: auto;
+  contain-intrinsic-size: 200px 300px;
+}
+
+.cardWrapper:hover {
+  transform: translateY(-4px);
+  z-index: 5;
+}
+
+.cardWrapper:hover .card {
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--border-accent);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  height: 100%;
+  box-shadow: none;
+  border: 1px solid var(--border-secondary);
+  transition:
+    border-color var(--transition-base),
+    background-color var(--transition-base);
+}
+
+.cardWrapper:hover .card {
+  border-color: var(--border-accent);
+  box-shadow: none;
+  background-color: var(--bg-tertiary);
+}
+
+.posterContainer {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  background: var(--bg-tertiary);
+}
+
+.posterImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition:
+    opacity 0.4s ease,
+    transform var(--transition-base);
+}
+
+.posterImg.loaded {
+  opacity: 1;
+}
+
+.cardWrapper:hover .posterImg {
+  transform: scale(1.08) translateZ(0);
+}
+
+.info {
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  gap: var(--space-2);
+}
+
+.title {
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-tight);
+  color: var(--text-primary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: auto;
+  transition: color var(--transition-base);
+}
+
+.cardWrapper:hover .title {
+  color: var(--accent-light);
+}
+
+.badge {
+  position: absolute;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  z-index: 2;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.typeBadge {
+  composes: badge;
+  top: var(--space-2);
+  left: var(--space-2);
+  background-color: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.epBadge {
+  composes: badge;
+  bottom: var(--space-2);
+  left: var(--space-2);
+  background-color: var(--accent);
+  color: white;
+}
+
+.scoreBadge {
+  composes: badge;
+  top: var(--space-2);
+  right: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+.scoreBadge svg {
+  font-size: 0.65rem;
+}
+
+.newBadge {
+  composes: badge;
+  top: var(--space-2);
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #ef4444, #f97316);
+  color: #fff;
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  padding: 0.2rem 0.5rem;
+}
+
+.playOverlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  color: #fff;
+  font-size: 2rem;
+  z-index: 3;
+}
+
+.cardWrapper:hover .playOverlay {
+  opacity: 1;
+}
+
+.adultBadge {
+  composes: badge;
+  bottom: var(--space-2);
+  right: var(--space-2);
+  background-color: var(--color-danger) !important;
+  color: white !important;
+  border: none;
+  font-size: 14px;
+  padding: 5px 10px;
+}
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  margin-top: auto;
+}
+
+.metaItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  background-color: var(--bg-tertiary);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  transition:
+    background-color var(--transition-base),
+    color var(--transition-base);
+}
+
+.metaItem:hover {
+  background-color: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.progressContainer {
+  width: 100%;
+  height: 4px;
+  background-color: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  margin-top: var(--space-2);
+  overflow: hidden;
+}
+
+.progressBar {
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--radius-sm);
+  transition: width 0.3s ease;
+}
+
+.timestamp {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  margin-top: var(--space-1);
+}
+
+.removeBtn,
+.infoBtn {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.15s ease,
+    background-color 0.15s ease,
+    transform 0.15s ease;
+  z-index: 20;
+  font-size: 1rem;
+}
+
+.removeBtn:hover {
+  background-color: rgba(239, 68, 68, 0.9) !important;
+  border-color: rgba(239, 68, 68, 0.9) !important;
+  transform: scale(1.08);
+}
+
+.infoBtn:hover {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  transform: scale(1.08);
+}
+
+.cardWrapper:hover .removeBtn,
+.card:hover .removeBtn,
+.cardWrapper:hover .infoBtn,
+.card:hover .infoBtn {
+  opacity: 1;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .removeBtn,
+  .infoBtn {
+    display: none; /* Only works on desktop as requested */
+  }
+}
+
+.mobileBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-1);
+}
+
+.mobileBadgeBase {
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  padding: 1px var(--space-1);
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.mobileType {
+  composes: mobileBadgeBase;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mobileEp {
+  composes: mobileBadgeBase;
+  background-color: var(--accent);
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .typeBadge {
+    display: none;
+  }
+
+  .removeBtn {
+    opacity: 1 !important;
+    background-color: rgba(0, 0, 0, 0.5) !important;
+  }
+
+  .card.horizontal {
+    flex-direction: row;
+    height: auto;
+    min-height: 100px;
+  }
+
+  .card.horizontal .posterContainer {
+    width: 85px;
+    height: 100%;
+    aspect-ratio: auto;
+    flex-shrink: 0;
+  }
+
+  .card.horizontal .info {
+    padding: var(--space-2) var(--space-3);
+    justify-content: center;
+  }
+
+  .card.vertical .posterContainer {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+  }
+
+  .card.vertical .info {
+    padding: var(--space-2);
+    align-items: center;
+    text-align: center;
+  }
+
+  .card.vertical .title {
+    font-size: var(--font-size-xs);
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    text-align: center;
+  }
+
+  .card.vertical .mobileBadges {
+    justify-content: center;
+  }
+
+  .title {
+    font-size: var(--font-size-sm);
+    margin-bottom: 2px;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .metaRow {
+    margin-top: var(--space-1);
+  }
+}
+
+.placeholder {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.placeholderText {
+  font-size: 2.5rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--text-tertiary);
+  opacity: 0.3;
+}
+
+.lowEnd .card {
+  transition: none !important;
+}
+
+.lowEnd .posterImg {
+  transition: none !important;
+}

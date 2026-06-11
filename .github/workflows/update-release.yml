@@ -1,0 +1,105 @@
+name: Build and Release Latest
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Inject Version Date
+        run: |
+          node -e "const fs = require('fs'); const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')); pkg.versionDate = new Date().toISOString(); fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
+
+      - name: Delete Existing Latest Release
+        run: |
+          gh release delete "latest" --yes || echo "No previous 'latest' release to delete."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Delete Existing Latest Tag
+        run: |
+          git tag -d "latest" || echo "No local 'latest' tag to delete."
+          git push origin --delete "latest" || echo "No remote 'latest' tag to delete."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create New Latest Tag
+        run: |
+          git tag latest
+          git push origin latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install Dependencies
+        run: |
+          npm install
+          npm run install:client
+
+      - name: Build Application
+        run: npm run build
+        env:
+          VITE_TELEMETRY_URL: ${{ secrets.TELEMETRY_URL }}
+
+      - name: Create Release Archive
+        run: |
+          mkdir -p release-package/client
+          mkdir -p release-package/server
+          cp -r client/dist release-package/client/
+          cp -r server/dist release-package/server/
+          cp client/package.json client/package-lock.json release-package/client/
+          cp server/package.json release-package/server/
+          cp package.json package-lock.json release-package/
+          cp LICENSE README.md release-package/
+          cp orchestrator.js release-package/
+
+          echo "#!/bin/bash" > release-package/run.sh
+          echo "node orchestrator.js prod" >> release-package/run.sh
+
+          echo "@echo off" > release-package/run.bat
+          echo "node orchestrator.js prod" >> release-package/run.bat
+
+          chmod +x release-package/run.sh
+
+          cd release-package
+          zip -r ../ani-web.zip .
+
+      - name: Create New Latest Release
+        run: |
+          gh release create "latest" \
+            "ani-web.zip" \
+            --title "latest" \
+            --notes "Automatically built from the latest commit. 
+
+          ### Manual Setup:
+          1. Download and extract 'ani-web.zip'
+          2. Run 'npm install --omit=dev' inside the folder
+          3. Launch using 'run.bat' (Windows) or 'run.sh' (Linux/Mac)" \
+            --target ${{ github.sha }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to NPM
+        run: |
+          PREV_VERSION=$(npm view ani-web version 2>/dev/null || echo "")
+          npm publish --access public
+          if [ -n "$PREV_VERSION" ]; then
+            npm unpublish ani-web@$PREV_VERSION --force
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VITE_TELEMETRY_URL: ${{ secrets.TELEMETRY_URL }}

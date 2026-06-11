@@ -1,0 +1,14 @@
+# Node modules
+/node_modules
+/client/node_modules
+/server/node_modules
+
+# Built output is tracked so low-resource production hosts do not compile on-server.
+/runtime-data
+*.out
+
+# Databases
+*.db
+server/.env
+server/google_tokens.json
+server/sync_manifest*.json

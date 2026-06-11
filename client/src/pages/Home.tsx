@@ -1,0 +1,317 @@
+import React, { useEffect, useMemo, useCallback, useRef, useState } from 'react'
+import { useQueryClient, useMutation } from '@tanstack/react-query'
+import { FaHistory, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
+import { Button } from '../components/common/Button'
+import AnimeSection from '../components/anime/AnimeSection'
+import Top10List from '../components/anime/Top10List'
+import Schedule from '../components/anime/Schedule'
+import AnimeCard from '../components/anime/AnimeCard'
+import AnimeHeroCarousel from '../components/anime/AnimeHeroCarousel'
+import SkeletonGrid from '../components/common/SkeletonGrid'
+import RemoveConfirmationModal from '../components/common/RemoveConfirmationModal'
+import { idsMatch, resolveShowId } from '../lib/showId'
+import HomeAiringToday from '../components/home/HomeAiringToday'
+import {
+  type Anime,
+  useLatestReleases,
+  usePaginatedCurrentSeason,
+  useContinueWatchingFast,
+  useContinueWatchingUpNext,
+  useRemoveFromWatchlist,
+} from '../hooks/useAnimeData'
+import { useTitlePreference } from '../contexts/TitlePreferenceContext'
+import { removeLocalContinueWatching } from '../lib/localProgress'
+import styles from './Home.module.css'
+
+type ActiveTab = 'latest' | 'season' | 'popular'
+const HERO_SELECTION_KEY = 'ani-web:hero-selection:v1'
+
+const getHeroSeed = () => {
+  const date = new Date().toISOString().slice(0, 10)
+  try {
+    const stored = JSON.parse(localStorage.getItem(HERO_SELECTION_KEY) || '{}')
+    if (stored.date === date && Number.isFinite(stored.seed)) return Number(stored.seed)
+    const seed = Math.floor(Math.random() * 2147483647)
+    localStorage.setItem(HERO_SELECTION_KEY, JSON.stringify({ date, seed }))
+    return seed
+  } catch {
+    return Number(date.replace(/-/g, ''))
+  }
+}
+
+const shuffleWithSeed = (items: Anime[], seed: number) => {
+  const shuffled = [...items]
+  let value = seed || 1
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    value = (value * 16807) % 2147483647
+    const target = value % (index + 1)
+    ;[shuffled[index], shuffled[target]] = [shuffled[target], shuffled[index]]
+  }
+  return shuffled
+}
+
+const Home: React.FC = () => {
+  const queryClient = useQueryClient()
+  const [page, setPage] = React.useState(1)
+  const [activeTab, setActiveTab] = useState(
+    () => (localStorage.getItem('home_activeTab') as ActiveTab) || 'latest'
+  )
+  const [heroSeed] = useState(() => getHeroSeed())
+  const seasonalRef = useRef<HTMLDivElement>(null)
+
+  const { data: nextPageData } = usePaginatedCurrentSeason(page + 1)
+  const { titlePreference } = useTitlePreference()
+  const [itemToRemove, setItemToRemove] = React.useState<{ id: string; name: string } | null>(null)
+  const removeWatchlistMutation = useRemoveFromWatchlist()
+
+  useEffect(() => {
+    document.title = 'Home - ani-web'
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem('home_activeTab', activeTab)
+  }, [activeTab])
+
+  const { data: latest, isLoading: loadingLatest } = useLatestReleases()
+  const { data: cwFast, isLoading: loadingFast } = useContinueWatchingFast(14)
+  const { data: cwUpNext } = useContinueWatchingUpNext()
+
+  const cwList = useMemo(() => {
+    const combined: typeof cwFast = []
+    const seen = new Set<string>()
+    if (cwFast) {
+      for (const show of cwFast) {
+        combined.push(show)
+        seen.add(show.id)
+      }
+    }
+    if (cwUpNext) {
+      for (const show of cwUpNext) {
+        if (!seen.has(show.id)) {
+          combined.push(show)
+          seen.add(show.id)
+        }
+      }
+    }
+    return combined.length > 0 ? combined : cwFast || []
+  }, [cwFast, cwUpNext])
+
+  const { data: currentSeason, isLoading: loadingSeason } = usePaginatedCurrentSeason(page)
+  const seasonLimit = 14
+  const continueWatchingIds = useMemo(
+    () => new Set((cwList || []).map((anime) => String(anime.id || anime._id))),
+    [cwList]
+  )
+
+  const featuredAnime = useMemo(() => {
+    const selected: Anime[] = []
+    const selectedIds = new Set<string>()
+    const addUnique = (anime: Anime) => {
+      const id = String(anime.id || anime._id || '')
+      if (!id || selectedIds.has(id)) return
+      selected.push(anime)
+      selectedIds.add(id)
+    }
+    ;(cwList || []).slice(0, 2).forEach(addUnique)
+    shuffleWithSeed([...(latest || []), ...(currentSeason || [])], heroSeed).forEach(addUnique)
+    return selected.slice(0, 6)
+  }, [currentSeason, cwList, heroSeed, latest])
+
+  const canGoNext =
+    currentSeason && currentSeason.length >= 14 && nextPageData && nextPageData.length > 0
+
+  const removeCw = useMutation({
+    mutationFn: async (showId: string) => {
+      removeLocalContinueWatching(showId)
+      await fetch('/api/continue-watching/remove', {
+        method: 'POST',
+        body: JSON.stringify({ showId }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['continueWatchingFast'] })
+      queryClient.invalidateQueries({ queryKey: ['continueWatchingUpNext'] })
+    },
+  })
+
+  const handleRemove = useCallback(
+    (id: string) => {
+      const show = cwList?.find((s) => idsMatch(s, id))
+      if (show) {
+        const displayTitle = (show[titlePreference as keyof typeof show] as string) || show.name
+        const canonicalId = resolveShowId(show)
+        setItemToRemove({ id: canonicalId, name: displayTitle })
+      }
+    },
+    [cwList, titlePreference]
+  )
+
+  const handleConfirmRemove = useCallback(
+    (options: { removeFromWatchlist?: boolean }) => {
+      if (!itemToRemove) return
+      removeCw.mutate(itemToRemove.id)
+      if (options.removeFromWatchlist) removeWatchlistMutation.mutate(itemToRemove.id)
+      setItemToRemove(null)
+    },
+    [itemToRemove, removeCw, removeWatchlistMutation]
+  )
+
+  const tabs: { key: ActiveTab; label: string }[] = [
+    { key: 'latest', label: 'Latest' },
+    { key: 'season', label: 'Season' },
+    { key: 'popular', label: 'Top 10' },
+  ]
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'latest':
+        return (
+          <AnimeSection
+            eyebrow="Fresh"
+            title="Latest releases"
+            subtitle="Just dropped — sub and dub when available"
+            animeList={latest?.slice(0, 14) || []}
+            loading={loadingLatest}
+            carousel
+            seeAllHref="/search"
+            seeAllLabel="Browse all"
+          />
+        )
+      case 'season':
+        return (
+          <section style={{ marginBottom: '2.5rem' }}>
+            <div className={styles['section-header']} ref={seasonalRef}>
+              <div className={styles['title-wrapper']}>
+                <div>
+                  <span className="section-eyebrow">Simulcast</span>
+                  <div className="section-title">Current season</div>
+                  <p className="section-subtitle">Page {page}</p>
+                </div>
+                <div className={styles['pagination-controls']}>
+                  <button
+                    className={styles['nav-button']}
+                    onClick={() => {
+                      if (page > 1) {
+                        setPage((p) => p - 1)
+                        if (seasonalRef.current) {
+                          const y =
+                            seasonalRef.current.getBoundingClientRect().top + window.scrollY - 120
+                          window.scrollTo({ top: y, behavior: 'smooth' })
+                        }
+                      }
+                    }}
+                    disabled={page === 1}
+                    style={{ opacity: page === 1 ? 0.3 : 1 }}
+                  >
+                    <FaChevronLeft size={14} />
+                  </button>
+                  <span className={styles['page-info']}>{page}</span>
+                  <button
+                    className={styles['nav-button']}
+                    onClick={() => {
+                      setPage((p) => p + 1)
+                      if (seasonalRef.current) {
+                        const y =
+                          seasonalRef.current.getBoundingClientRect().top + window.scrollY - 120
+                        window.scrollTo({ top: y, behavior: 'smooth' })
+                      }
+                    }}
+                    disabled={!canGoNext}
+                    style={{ opacity: canGoNext ? 1 : 0.3 }}
+                  >
+                    <FaChevronRight size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div
+              className={`grid-container ${styles.seasonGrid}`}
+              style={{ minHeight: '300px', alignContent: 'start' }}
+            >
+              {loadingSeason ? (
+                <SkeletonGrid count={seasonLimit} />
+              ) : (
+                currentSeason
+                  ?.slice(0, seasonLimit)
+                  .map((anime) => <AnimeCard key={anime._id} anime={anime} />)
+              )}
+            </div>
+          </section>
+        )
+      case 'popular':
+        return <Top10List title="Top 10 Popular" />
+      default:
+        return null
+    }
+  }
+
+  return (
+    <>
+      <AnimeHeroCarousel
+        animeList={featuredAnime}
+        loading={loadingLatest && loadingSeason}
+        continueWatchingIds={continueWatchingIds}
+      />
+
+      <div className={styles.homeBody}>
+        <AnimeSection
+          eyebrow="Your queue"
+          title="Continue watching"
+          subtitle="Pick up where you left off"
+          animeList={cwList || []}
+          continueWatching
+          carousel
+          onRemove={handleRemove}
+          showSeeMore={cwList !== undefined && cwList.length > 0}
+          seeAllHref="/watchlist/Continue Watching"
+          loading={loadingFast}
+          emptyState={
+            <div className={styles.emptyContinue}>
+              <FaHistory size={36} aria-hidden />
+              <div>
+                <h3>Nothing in progress</h3>
+                <p>Start a show from the hero, or browse the catalog to find something new.</p>
+              </div>
+            </div>
+          }
+        />
+
+        <Top10List title="Hot this week" fixedTimeframe="weekly" eyebrow="Trending" />
+        <HomeAiringToday />
+
+        <div className={styles.tabBar} role="tablist" aria-label="Browse categories">
+          {tabs.map((tab) => (
+            <Button
+              key={tab.key}
+              variant="ghost"
+              size="sm"
+              role="tab"
+              aria-selected={activeTab === tab.key}
+              className={`${styles.tabButton} ${activeTab === tab.key ? styles.tabActive : ''}`}
+              onClick={() => setActiveTab(tab.key)}
+            >
+              {tab.label}
+            </Button>
+          ))}
+        </div>
+
+        <div className={styles.tabContent}>{renderTabContent()}</div>
+
+        <div id="schedule">
+          <Schedule />
+        </div>
+
+        <RemoveConfirmationModal
+          isOpen={!!itemToRemove}
+          onClose={() => setItemToRemove(null)}
+          onConfirm={handleConfirmRemove}
+          animeName={itemToRemove?.name || ''}
+          scenario="continueWatching"
+        />
+      </div>
+    </>
+  )
+}
+
+export default Home
