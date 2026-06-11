@@ -36,7 +36,7 @@ const PROFILE_PICTURE_KEY_PREFIX = 'ani-web:profile-picture:'
 const DISPLAY_NAME_KEY_PREFIX = 'ani-web:display-name:'
 const GUEST_SIGN_IN_DISMISSED_KEY = 'ani-web:guest-sign-in-dismissed'
 const MAX_DISPLAY_NAME_LENGTH = 40
-const DEFAULT_GUEST_AVATAR_URL = '/guest-avatar.svg'
+const DEFAULT_GUEST_AVATAR_URL = '/guest-avatar.png'
 
 async function parseError(response: Response): Promise<string> {
   try {
